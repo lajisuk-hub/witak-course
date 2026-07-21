@@ -107,16 +107,11 @@ export default function Home() {
     setBusy('한글 파일을 만드는 중입니다...');
     try {
       const blob = await buildHwpx({
-        title: `${city || '○○시'} 국공립 ${center || '○○'}어린이집 위탁운영계획서`,
-        subtitle: applicant ? `원장지원자 : ${applicant}` : '',
-        items: items.map((it) => {
-          const s = sectionById(it.matchId);
-          return {
-            name: it.name,
-            guide: s?.guide || '',
-            body: s?.body || '',
-          };
-        }),
+        city,
+        center,
+        applicant,
+        items,
+        onProgress: setBusy,
       });
       const safe = (city || '위탁') + '_위탁운영계획서_뼈대.hwpx';
       downloadBlob(blob, safe);
