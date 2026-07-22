@@ -466,3 +466,16 @@ h3.mini { font-size: 15px; color: var(--navy); margin: 20px 0 8px; }
   .a4 { border: none; box-shadow: none; padding: 0; max-width: none; }
   .a4-sec textarea { border: none !important; background: none !important; }
 }
+
+/* 자리 표시 안내 */
+code.mark {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 7px;
+  background: var(--navy);
+  color: #f0d9a8;
+  font-family: 'D2Coding', Consolas, monospace;
+  font-size: 14px;
+  font-weight: 700;
+}
+.warn code { background: #fff; padding: 1px 6px; border-radius: 5px; font-weight: 700; }

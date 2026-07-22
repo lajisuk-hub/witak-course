@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_SECTIONS } from '@/lib/sampleSections';
 import { loadSections, saveSections } from '@/lib/store';
+import { MARKER_GUIDE } from '@/lib/markers';
 
 const PW_KEY = 'witak-admin-pw';
 
@@ -379,6 +380,41 @@ export default function Admin() {
                 <br />
                 <b>로그인한 수강생만</b> 받을 수 있고, 주소를 알아도 밖에서는 열 수 없습니다.
               </p>
+            </div>
+
+            <div className="card">
+              <h2>샘플에 넣어 주실 자리 표시</h2>
+              <p className="sub">
+                각 항목이 <b>시작하는 곳</b>에 빈 줄을 하나 만들고, 그 줄에 아래 표시만 적어
+                주세요. 이 표시를 보고 앱이 &ldquo;여기가 자기소개서 자리&rdquo; 하고 알아냅니다.
+              </p>
+
+              {MARKER_GUIDE.map((g) => (
+                <div className="item" key={g.mark}>
+                  <div>
+                    <code className="mark">{g.mark}</code>
+                    <span className="name" style={{ marginLeft: 10 }}>
+                      {g.what}
+                    </span>
+                    <span className="badge off">{g.step}차시</span>
+                  </div>
+                </div>
+              ))}
+
+              <div className="warn">
+                <b>지킬 것 세 가지</b>
+                <br />① 대괄호 <b>두 개씩</b>, 붙여서, 띄어쓰기 없이 — <code>[[자기소개서]]</code>
+                <br />② 그 줄에는 <b>표시만</b> 적기 (다른 글자 같이 넣지 않기)
+                <br />③ 표시한 줄부터 <b>다음 표시 전까지</b>가 그 항목입니다
+              </div>
+
+              <div className="info">
+                표시한 줄은 완성 문서에서 <b>자동으로 사라집니다.</b>
+                <br />
+                수강생이 그 차시를 <b>안 했으면</b> 원장님 샘플 내용이 그대로 남아 본보기가 되고,
+                <br />
+                <b>마쳤으면</b> 수강생이 쓴 내용으로 바뀝니다.
+              </div>
             </div>
 
             <div className="card">
