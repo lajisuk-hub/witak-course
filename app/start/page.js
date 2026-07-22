@@ -97,7 +97,7 @@ export default function Start() {
   return (
     <>
       <div className="head">
-        <h1>시작하기 · 나를 알아보는 인터뷰</h1>
+        <h1>국공립 신규위탁 교육과정</h1>
         <p>먼저 몇 가지만 여쭙고, 원장님께 맞는 공부 계획을 짜 드립니다</p>
         {phase === 2 && <a href="/">← 차시 목록으로</a>}
       </div>
@@ -105,11 +105,23 @@ export default function Start() {
       <div className="wrap">
         <div className="steps">
           <div className={phase === 0 ? 'on' : 'done'}>1. 인적사항</div>
-          <div className={phase === 1 ? 'on' : phase > 1 ? 'done' : ''}>2. 네 가지 질문</div>
-          <div className={phase === 2 ? 'on' : ''}>3. 나에게 맞는 공부 계획</div>
+          <div className={phase === 1 ? 'on' : phase > 1 ? 'done' : ''}>2. 지원동기 · 강점 질문</div>
+          <div className={phase === 2 ? 'on' : ''}>3. 나만의 계획</div>
         </div>
 
         {error && <div className="err">{error}</div>}
+
+        {/* 참여 인사말 */}
+        {phase < 2 && (
+          <div className="card welcome">
+            <h2>국공립 신규위탁 한 달 과정에 참여해 주셔서 감사합니다</h2>
+            <p>
+              사전 인터뷰를 통해 어떤 강점과 약점이 있는지 파악하고 계획하려 합니다.
+              <br />
+              하단의 내용은 <b>나만의 계획표</b>를 만들기 위함이니 상세히 작성해 주세요!
+            </p>
+          </div>
+        )}
 
         {/* ── 1. 인적사항 ── */}
         {phase === 0 && (
@@ -124,7 +136,7 @@ export default function Start() {
                   type="text"
                   value={profile.name}
                   onChange={(e) => setP('name', e.target.value)}
-                  placeholder="예) 홍길동"
+                  placeholder="예) 라지숙"
                 />
               </div>
               <div>
@@ -133,7 +145,7 @@ export default function Start() {
                   type="text"
                   value={profile.phone}
                   onChange={(e) => setP('phone', e.target.value)}
-                  placeholder="예) 010-1234-5678"
+                  placeholder="예) 01012345678"
                 />
               </div>
               <div>
@@ -142,7 +154,7 @@ export default function Start() {
                   type="text"
                   value={profile.region}
                   onChange={(e) => setP('region', e.target.value)}
-                  placeholder="예) 대구 수성구"
+                  placeholder="예) 세종시"
                 />
               </div>
               <div>
@@ -151,7 +163,7 @@ export default function Start() {
                   type="text"
                   value={profile.targetRegion}
                   onChange={(e) => setP('targetRegion', e.target.value)}
-                  placeholder="예) 원주시"
+                  placeholder="예) 충주"
                 />
               </div>
             </div>

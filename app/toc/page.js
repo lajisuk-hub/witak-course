@@ -164,7 +164,7 @@ export default function Home() {
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="예) 원주시"
+                  placeholder="예) 충주"
                 />
               </div>
               <div>
@@ -182,7 +182,7 @@ export default function Home() {
               type="text"
               value={applicant}
               onChange={(e) => setApplicant(e.target.value)}
-              placeholder="예) 홍길동"
+              placeholder="예) 라지숙"
             />
 
             <div className="foot-nav">

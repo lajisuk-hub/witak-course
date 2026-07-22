@@ -184,6 +184,11 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--gold); outl
 
 .start-card { border-color: var(--gold); background: #fffdf7; }
 
+/* 참여 인사말 */
+.welcome { border-color: var(--gold); background: #fffdf7; }
+.welcome h2 { margin-bottom: 10px; line-height: 1.5; }
+.welcome p { margin: 0; font-size: 14.5px; line-height: 1.8; color: var(--text); }
+
 .plan-card {
   display: block; text-decoration: none; color: inherit;
   border-color: var(--navy); background: #f5f9fd;

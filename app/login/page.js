@@ -69,11 +69,11 @@ export default function Login() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && okPhone && !busy && submit()}
-            placeholder="01092304025"
+            placeholder="01012345678"
             style={{ fontSize: 20, letterSpacing: 1 }}
           />
           <div className="hint">
-            <b>하이픈(-) 없이 숫자만</b> 넣어 주세요. 예) 01092304025
+            <b>하이픈(-) 없이 숫자만</b> 넣어 주세요. 예) 01012345678
           </div>
 
           {askName && (
@@ -85,7 +85,7 @@ export default function Login() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && name.trim() && !busy && submit()}
-                placeholder="예) 홍길동"
+                placeholder="예) 라지숙"
                 autoFocus
               />
             </>

@@ -15,7 +15,7 @@ export async function POST(req) {
 
     if (!validPhone(phone)) {
       return Response.json(
-        { error: '전화번호를 하이픈 없이 숫자만 넣어 주세요. (예: 01092304025)' },
+        { error: '전화번호를 하이픈 없이 숫자만 넣어 주세요. (예: 01012345678)' },
         { status: 400 }
       );
     }

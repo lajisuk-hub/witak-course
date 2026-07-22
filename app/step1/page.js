@@ -13,7 +13,7 @@ const GROUPS = [
     title: '기본 정보',
     desc: '자기소개서 첫머리에 쓰입니다.',
     fields: [
-      { key: 'name', label: '성함', required: true, line: true, ph: '예) 홍길동' },
+      { key: 'name', label: '성함', required: true, line: true, ph: '예) 라지숙' },
       {
         key: 'centerName',
         label: '지원하는 어린이집명',
