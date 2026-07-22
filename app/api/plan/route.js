@@ -32,9 +32,19 @@ export async function POST(req) {
   try {
     if (!ready()) return Response.json({ error: '서버 설정이 끝나지 않았습니다.' }, { status: 500 });
 
-    const { phone: raw, taskId, on } = await req.json();
+    const { phone: raw, taskId, on, reset } = await req.json();
     const phone = normalizePhone(raw);
-    if (!validPhone(phone) || !taskId) {
+    if (!validPhone(phone)) {
+      return Response.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+    }
+
+    // 처음부터 다시 하기 — 내가 누른 체크를 모두 지운다
+    if (reset) {
+      await remove('witak_checks', `phone=eq.${encodeURIComponent(phone)}`);
+      return Response.json({ ok: true });
+    }
+
+    if (!taskId) {
       return Response.json({ error: '잘못된 요청입니다.' }, { status: 400 });
     }
 

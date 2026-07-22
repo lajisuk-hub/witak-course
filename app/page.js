@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { COURSE } from '@/lib/course';
-import { loadAll } from '@/lib/store';
+import { loadAll, clearAll } from '@/lib/store';
 import { useMe, logout } from '@/lib/auth';
 import CalendarBoard from '@/app/CalendarBoard';
 import ContactBar from '@/app/ContactBar';
@@ -32,6 +32,29 @@ export default function Home() {
     setTocReady(Array.isArray(d.items) && d.items.length > 0);
     setCheckedStart(true);
   }, []);
+
+  async function reset() {
+    if (
+      !confirm(
+        '이 전화번호로 쓰신 내용을 모두 지우고 처음부터 다시 시작할까요?\n\n' +
+          '· 첫 인터뷰, 목차, 자기소개서 등 작성한 내용\n' +
+          '· 달력에 체크한 것\n\n' +
+          '지우면 되돌릴 수 없습니다.'
+      )
+    )
+      return;
+    try {
+      await fetch('/api/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: me.phone, reset: true }),
+      });
+    } catch {
+      /* 달력 체크는 못 지워도 나머지는 진행한다 */
+    }
+    clearAll();
+    window.location.replace('/start');
+  }
 
   if (!ready || !me || !checkedStart) return null;
 
@@ -171,6 +194,10 @@ export default function Home() {
         <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13 }}>
           <a href="/admin" style={{ color: 'var(--muted)' }}>
             관리자 화면
+          </a>
+          <span style={{ color: 'var(--line)', margin: '0 10px' }}>|</span>
+          <a onClick={reset} style={{ color: 'var(--muted)', cursor: 'pointer' }}>
+            처음부터 다시 하기
           </a>
         </p>
       </div>
