@@ -110,7 +110,7 @@ export default function Login() {
         </div>
 
         <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
-          문의 · 라지숙 소장
+          영유아교육디자인연구소 문의
         </p>
       </div>
     </>
