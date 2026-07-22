@@ -8,24 +8,28 @@ import { useMe } from '@/lib/auth';
 const QUESTIONS = [
   {
     key: 'career',
+    short: '전체 경력',
     label: '전체 경력을 적어 주세요',
     hint: '어린이집·유치원 근무, 원장 경력, 그 밖의 일까지. 연도와 함께 적으면 좋습니다.',
     ph: '예) 2011~2016 ○○어린이집 보육교사 / 2017~2024 ○○어린이집 원장 (정원 49명) / 보육교사 1급, 원장 자격',
   },
   {
     key: 'reason',
+    short: '지원 이유',
     label: '국공립 원장이 되고자 하는 이유는 무엇인가요?',
     hint: '솔직하게 쓰셔도 됩니다. 이 내용이 자기소개서의 뼈대가 됩니다.',
     ph: '예) 민간에서 하기 어려웠던 ○○을 국공립에서는 제대로 해보고 싶습니다...',
   },
   {
     key: 'worry',
+    short: '걱정되는 부분',
     label: '이번 지원에서 가장 걱정되는 부분은 무엇인가요?',
     hint: '걱정되는 것을 알아야 그 부분을 집중해서 도와드릴 수 있습니다.',
     ph: '예) 예산서를 한 번도 직접 짜본 적이 없어서 걱정입니다',
   },
   {
     key: 'help',
+    short: '도움받고 싶은 부분',
     label: '가장 도움받고 싶은 부분은 무엇인가요?',
     hint: '',
     ph: '예) 면접에서 무슨 말을 해야 할지 모르겠습니다',
@@ -67,7 +71,10 @@ export default function Start() {
   const setA = (k, v) => setAnswers({ ...answers, [k]: v });
 
   const profileOk = profile.name.trim() && profile.phone.trim() && profile.targetRegion.trim();
-  const answersOk = QUESTIONS.every((q) => (answers[q.key] || '').trim().length >= 10);
+  // 답이 너무 짧으면 분석이 부실해지므로 각 칸에 10자 이상을 받는다.
+  const MIN = 10;
+  const shortQs = QUESTIONS.filter((q) => (answers[q.key] || '').trim().length < MIN);
+  const answersOk = shortQs.length === 0;
 
   async function analyze() {
     setError('');
@@ -178,6 +185,18 @@ export default function Start() {
                 다음
               </button>
             </div>
+            {!profileOk && (
+              <p style={{ textAlign: 'right', fontSize: 13, color: 'var(--warn)', marginTop: 8 }}>
+                아직 안 쓰신 칸:{' '}
+                {[
+                  !profile.name.trim() && '이름',
+                  !profile.phone.trim() && '전화번호',
+                  !profile.targetRegion.trim() && '지원하고 싶은 지역',
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
+              </p>
+            )}
           </div>
         )}
 
@@ -186,22 +205,33 @@ export default function Start() {
           <div className="card">
             <h2>네 가지만 여쭙겠습니다</h2>
             <p className="sub">
-              길게 쓰지 않으셔도 됩니다. 생각나는 대로 편하게 쓰시면 제가 정리해 드립니다.
+              생각나는 대로 편하게 쓰시면 제가 정리해 드립니다. <b>각 칸에 10자 이상</b> 적어
+              주세요.
             </p>
 
-            {QUESTIONS.map((q) => (
-              <div key={q.key}>
-                <label>{q.label}</label>
-                {q.hint && (
-                  <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--muted)' }}>{q.hint}</p>
-                )}
-                <textarea
-                  value={answers[q.key]}
-                  onChange={(e) => setA(q.key, e.target.value)}
-                  placeholder={q.ph}
-                />
-              </div>
-            ))}
+            {QUESTIONS.map((q) => {
+              const len = (answers[q.key] || '').trim().length;
+              return (
+                <div key={q.key}>
+                  <label>{q.label}</label>
+                  {q.hint && (
+                    <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--muted)' }}>
+                      {q.hint}
+                    </p>
+                  )}
+                  <textarea
+                    value={answers[q.key]}
+                    onChange={(e) => setA(q.key, e.target.value)}
+                    placeholder={q.ph}
+                  />
+                  {len > 0 && len < MIN && (
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--warn)' }}>
+                      10자 이상 작성해야 합니다. (지금 {len}자)
+                    </p>
+                  )}
+                </div>
+              );
+            })}
 
             {busy && (
               <div className="info">
@@ -219,8 +249,9 @@ export default function Start() {
               </button>
             </div>
             {!answersOk && (
-              <p style={{ textAlign: 'right', fontSize: 13, color: 'var(--muted)', marginTop: 8 }}>
-                네 칸을 모두 채우시면 버튼이 켜집니다.
+              <p style={{ textAlign: 'right', fontSize: 13, color: 'var(--warn)', marginTop: 8 }}>
+                각 칸에 <b>10자 이상</b> 작성해야 합니다.
+                <br />더 쓰셔야 하는 칸: {shortQs.map((q) => q.short).join(', ')}
               </p>
             )}
           </div>
