@@ -15,6 +15,7 @@ export default function Step2() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const frameRef = useRef(null);
+  const excelRef = useRef(null);
 
   useEffect(() => {
     if (!authed || !me) return;
@@ -23,24 +24,22 @@ export default function Step2() {
     setReady(true);
   }, [authed, me]);
 
-  async function makeDoc() {
+  async function onExcel(e) {
+    const f = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!f) return;
+    if (!/\.xlsx?$/i.test(f.name)) {
+      setError('엑셀 파일(.xlsx)만 올릴 수 있습니다.');
+      return;
+    }
+
     setError('');
     setResult(null);
+    setBusy('엑셀을 읽는 중입니다...');
     try {
-      const w = frameRef.current?.contentWindow;
-      if (!w || typeof w.__witakBudget !== 'function') {
-        throw new Error('예산서 화면이 아직 준비되지 않았습니다. 잠시 뒤 다시 눌러 주세요.');
-      }
-      const { state, calc } = w.__witakBudget();
-      if (!state?.data?.capacity) {
-        throw new Error('먼저 위 예산서에서 정원부터 채워 주세요.');
-      }
-
-      setBusy('예산서를 만드는 중입니다...');
       const d = loadAll();
       const r = await buildBudgetDoc({
-        state,
-        calc,
+        file: f,
         phone: me.phone,
         city: d.city,
         student: d.applicant || me.name,
@@ -49,8 +48,8 @@ export default function Step2() {
       downloadBlob(r.blob, r.name);
       markDone(2);
       setResult(r);
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setBusy('');
     }
@@ -98,11 +97,10 @@ export default function Step2() {
         <div className="card welcome">
           <h2>이렇게 하시면 됩니다</h2>
           <p>
-            아래 화면에서 <b>정원 · 반 구성 · 교직원</b>부터 차례대로 답해 주세요. 4대보험과 인건비
-            지원율 같은 어려운 계산은 자동으로 처리됩니다.
-            <br />
-            끝까지 마치신 뒤 맨 아래 <b>한글 예산서로 저장</b>을 누르시면, 라지숙 소장 서식의
-            세입·세출 표에 <b>금액과 산출기초가 채워진 채로</b> 나옵니다.
+            ① 아래 화면에서 <b>정원 · 반 구성 · 교직원</b>부터 차례대로 답해 주세요. 4대보험과
+            인건비 지원율 같은 어려운 계산은 자동으로 처리됩니다.
+            <br />② 다 마치시면 그 화면의 <b>엑셀 다운로드</b>를 누르세요.
+            <br />③ 받은 엑셀을 <b>맨 아래 칸에 올리시면</b> 한글 예산서가 만들어집니다.
           </p>
         </div>
 
@@ -116,11 +114,29 @@ export default function Step2() {
         </div>
 
         <div className="card done-card noprint">
-          <h2>한글 예산서로 저장</h2>
+          <h2>엑셀을 올리면 한글 예산서로 만들어 드립니다</h2>
           <p>
-            위에서 채운 내용이 <b>관·항·목 자리에 맞춰</b> 들어갑니다. 신규위탁이라 전년도
-            예산액·증감은 비워 둡니다.
+            위 예산서를 다 채우신 뒤 <b>엑셀 다운로드</b>를 누르세요. 그 파일을 아래에 올리시면,
+            라지숙 소장 서식의 <b>세입·세출 표에 금액과 산출기초가 채워진 채로</b> 나옵니다.
+            <br />
+            신규위탁이라 <b>전년도 예산액·증감은 비워</b> 둡니다.
           </p>
+
+          <div className="drop" style={{ marginTop: 14 }}>
+            <p style={{ margin: '0 0 12px' }}>
+              예산서 앱에서 받은 <strong>엑셀(.xlsx)</strong> 파일
+            </p>
+            <button className="btn btn-gold" onClick={() => excelRef.current?.click()} disabled={!!busy}>
+              엑셀 파일 고르기
+            </button>
+            <input
+              ref={excelRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={onExcel}
+              style={{ display: 'none' }}
+            />
+          </div>
 
           {busy && (
             <div className="info">
@@ -140,21 +156,14 @@ export default function Step2() {
                   <br />
                   세입 합계 {Math.round(result.totals.income / 1000).toLocaleString('ko-KR')}천원 ·
                   세출 합계 {Math.round(result.totals.expense / 1000).toLocaleString('ko-KR')}천원
-                  {result.totals.income !== result.totals.expense && (
-                    <>
-                      <br />
-                      <b style={{ color: 'var(--warn)' }}>
-                        ※ 세입과 세출이 맞지 않습니다. 위에서 다시 확인해 주세요.
-                      </b>
-                    </>
-                  )}
                 </>
               )}
               {result.missing?.length > 0 && (
                 <>
                   <br />
-                  <span style={{ color: 'var(--muted)' }}>
-                    서식에 자리가 없어 못 넣은 항목: {result.missing.join(', ')}
+                  <span style={{ color: 'var(--warn)' }}>
+                    서식에 자리가 없어 못 넣은 항목: {result.missing.join(', ')} — 한글에서 직접
+                    넣어 주세요.
                   </span>
                 </>
               )}
@@ -162,16 +171,13 @@ export default function Step2() {
           )}
 
           <div className="row" style={{ marginTop: 12 }}>
-            <button className="btn btn-gold" onClick={makeDoc} disabled={!!busy}>
-              한글 예산서로 저장
-            </button>
             <a className="btn btn-ghost" href="/">
               메인으로 →
             </a>
           </div>
           <p style={{ fontSize: 13, color: 'var(--muted)', margin: '10px 0 0' }}>
-            ※ 파일 이름은 <b>지역_이름_예산서.hwpx</b> 입니다. 다시 계산해서 몇 번이든 새로 받으실
-            수 있습니다.
+            ※ 파일 이름은 <b>지역_이름_예산서.hwpx</b> 입니다. 예산을 고치신 뒤 엑셀을 다시 받아
+            올리시면 몇 번이든 새로 만드실 수 있습니다.
           </p>
         </div>
 
