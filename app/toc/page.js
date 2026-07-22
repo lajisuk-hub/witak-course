@@ -6,10 +6,12 @@ import { loadAll, patch, loadSections, markDone } from '@/lib/store';
 import { readNoticeFile } from '@/lib/readFile';
 import { buildHwpx, downloadBlob } from '@/lib/hwpx';
 import { loadWritten, writtenSteps } from '@/lib/written';
+import { useMe } from '@/lib/auth';
 
 const STEPS = ['1. 기본 정보', '2. 공고문 올리기', '3. 목차 확인', '4. 내 문서 뼈대'];
 
 export default function Home() {
+  const { me, ready: authed } = useMe();
   const [step, setStep] = useState(0);
   const [ready, setReady] = useState(false);
   const [sections, setSections] = useState(DEFAULT_SECTIONS);
@@ -29,18 +31,19 @@ export default function Home() {
 
   // 저장된 내용 불러오기
   useEffect(() => {
+    if (!authed || !me) return;
     const d = loadAll();
     setSections(loadSections(DEFAULT_SECTIONS));
     setMyDone(writtenSteps());
     if (d.city) setCity(d.city);
     if (d.center) setCenter(d.center);
-    if (d.applicant) setApplicant(d.applicant);
+    setApplicant(d.applicant || me.name || '');
     if (Array.isArray(d.items) && d.items.length) {
       setItems(d.items);
       setStep(3);
     }
     setReady(true);
-  }, []);
+  }, [authed, me]);
 
   // 자동 저장
   useEffect(() => {
@@ -127,7 +130,7 @@ export default function Home() {
     }
   }
 
-  if (!ready) return null;
+  if (!authed || !me || !ready) return null;
 
   return (
     <>

@@ -6,3 +6,7 @@ node_modules
 
 .vercel
 .env*
+
+# 문서 샘플은 Supabase 비공개 보관소에 둔다 (레포에 올리지 않는다)
+public/sample.hwpx
+sample-backup.hwpx

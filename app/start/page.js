@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { loadAll, patch, markDone } from '@/lib/store';
 import { CONTACT_LINE } from '@/lib/course';
+import { useMe } from '@/lib/auth';
 
 const QUESTIONS = [
   {
@@ -32,6 +33,7 @@ const QUESTIONS = [
 ];
 
 export default function Start() {
+  const { me, ready: authed } = useMe();
   const [ready, setReady] = useState(false);
   const [phase, setPhase] = useState(0); // 0 인적사항 · 1 질문 · 2 결과
 
@@ -43,7 +45,10 @@ export default function Start() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!authed || !me) return;
     const d = loadAll();
+    // 로그인할 때 넣은 이름·전화번호를 미리 채워 둔다
+    setProfile((p) => ({ ...p, name: me.name || '', phone: me.phone || '' }));
     if (d.profile) setProfile((p) => ({ ...p, ...d.profile }));
     if (d.answers) setAnswers((a) => ({ ...a, ...d.answers }));
     if (d.coaching) {
@@ -51,7 +56,7 @@ export default function Start() {
       setPhase(2);
     }
     setReady(true);
-  }, []);
+  }, [authed, me]);
 
   useEffect(() => {
     if (!ready) return;
@@ -87,7 +92,7 @@ export default function Start() {
     }
   }
 
-  if (!ready) return null;
+  if (!authed || !me || !ready) return null;
 
   return (
     <>

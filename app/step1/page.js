@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { loadAll, patch, markDone } from '@/lib/store';
 import { CONTACT_LINE } from '@/lib/course';
 import { buildDocHwpx, downloadBlob } from '@/lib/hwpx';
+import { useMe } from '@/lib/auth';
 
 // 질문 구성·문단 구조·문체 3종·목표 분량은
 // 원장님의 "자기소개서 작성 도구 v0.6" 을 그대로 따른다.
@@ -120,6 +121,7 @@ const ALL_FIELDS = GROUPS.flatMap((g) => g.fields);
 const EMPTY = { para1: '', para2: '', para3: '', closing: '' };
 
 export default function Step1() {
+  const { me, ready: authed } = useMe();
   const [ready, setReady] = useState(false);
   const [phase, setPhase] = useState(0); // 0 입력 · 1 결과
 
@@ -132,10 +134,11 @@ export default function Step1() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    if (!authed || !me) return;
     const d = loadAll();
-    // 시작 인터뷰에서 이미 받은 내용을 미리 채워 둔다
+    // 로그인·시작 인터뷰에서 이미 받은 내용을 미리 채워 둔다
     const pre = {
-      name: d.profile?.name || '',
+      name: d.profile?.name || me.name || '',
       career: d.answers?.career || '',
       reason: d.answers?.reason || '',
     };
@@ -146,7 +149,7 @@ export default function Step1() {
       setPhase(1);
     }
     setReady(true);
-  }, []);
+  }, [authed, me]);
 
   useEffect(() => {
     if (!ready) return;
@@ -255,7 +258,7 @@ export default function Step1() {
     }
   }
 
-  if (!ready) return null;
+  if (!authed || !me || !ready) return null;
 
   const chars = (draft.para1 + draft.para2 + draft.para3 + draft.closing).replace(/\s/g, '').length;
   const pct = Math.min(100, Math.round((chars / 1400) * 100));
