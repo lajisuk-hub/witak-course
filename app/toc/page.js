@@ -7,6 +7,7 @@ import { readNoticeFile } from '@/lib/readFile';
 import { buildHwpx, downloadBlob } from '@/lib/hwpx';
 import { loadWritten, writtenSteps } from '@/lib/written';
 import { useMe } from '@/lib/auth';
+import { DEFAULT_SETTING, FONTS, describeSetting, isEmptySetting } from '@/lib/docSetting';
 
 const STEPS = ['1. 기본 정보', '2. 공고문 올리기', '3. 목차 확인', '4. 내 문서 뼈대'];
 
@@ -27,6 +28,7 @@ export default function Home() {
 
   const [items, setItems] = useState([]); // [{name, matchId}]
   const [myDone, setMyDone] = useState([]); // 내가 직접 쓴 차시 번호
+  const [setting, setSetting] = useState(DEFAULT_SETTING); // 지자체가 정한 문서 설정
   const fileRef = useRef(null);
 
   // 저장된 내용 불러오기
@@ -38,6 +40,7 @@ export default function Home() {
     if (d.city) setCity(d.city);
     if (d.center) setCenter(d.center);
     setApplicant(d.applicant || me.name || '');
+    if (d.setting) setSetting({ ...DEFAULT_SETTING, ...d.setting });
     if (Array.isArray(d.items) && d.items.length) {
       setItems(d.items);
       setStep(3);
@@ -48,8 +51,8 @@ export default function Home() {
   // 자동 저장
   useEffect(() => {
     if (!ready) return;
-    patch({ city, center, applicant, items });
-  }, [ready, city, center, applicant, items]);
+    patch({ city, center, applicant, items, setting });
+  }, [ready, city, center, applicant, items, setting]);
 
   const sectionById = (id) => sections.find((s) => s.id === id) || null;
 
@@ -65,6 +68,7 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '목차를 뽑지 못했습니다');
       if (data.cityName && !city) setCity(data.cityName);
+      if (data.setting) setSetting({ ...DEFAULT_SETTING, ...data.setting });
       setItems(data.items);
       setStep(2);
     } catch (e) {
@@ -118,6 +122,7 @@ export default function Home() {
         applicant,
         items,
         written: loadWritten(sections),
+        setting,
         onProgress: setBusy,
       });
       const safe = (city || '위탁') + '_위탁운영계획서_뼈대.hwpx';
@@ -304,6 +309,77 @@ export default function Home() {
               + 항목 추가
             </button>
 
+            <h3 className="mini" style={{ marginTop: 26 }}>
+              문서 설정 (글꼴 · 여백)
+            </h3>
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', margin: '0 0 12px' }}>
+              지자체마다 <b>글꼴과 여백을 정해 두는 경우</b>가 많습니다. 공고문에서 찾은 것을
+              넣어 두었습니다. 틀리면 고쳐 주세요.{' '}
+              <b>비워 두면 원장님 샘플 문서 그대로</b> 만들어집니다.
+            </p>
+
+            <div className="grid2">
+              <div>
+                <label>글꼴</label>
+                <select
+                  value={setting.font}
+                  onChange={(e) => setSetting({ ...setting, font: e.target.value })}
+                >
+                  <option value="">샘플 그대로</option>
+                  {FONTS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>본문 글자 크기 (pt)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={setting.size || ''}
+                  onChange={(e) =>
+                    setSetting({ ...setting, size: Number(e.target.value.replace(/\D/g, '')) || 0 })
+                  }
+                  placeholder="예) 12 · 비우면 샘플 그대로"
+                />
+              </div>
+              <div>
+                <label>줄간격 (%)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={setting.lineSpacing || ''}
+                  onChange={(e) =>
+                    setSetting({
+                      ...setting,
+                      lineSpacing: Number(e.target.value.replace(/\D/g, '')) || 0,
+                    })
+                  }
+                  placeholder="예) 160 · 비우면 샘플 그대로"
+                />
+              </div>
+              <div>
+                <label>용지 여백 (mm · 상하좌우)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={setting.margin || ''}
+                  onChange={(e) =>
+                    setSetting({ ...setting, margin: Number(e.target.value.replace(/\D/g, '')) || 0 })
+                  }
+                  placeholder="예) 20 · 비우면 샘플 그대로"
+                />
+              </div>
+            </div>
+
+            <div className="info" style={{ marginTop: 12 }}>
+              지금 설정: <b>{describeSetting(setting)}</b>
+              <br />※ 표 안의 글씨와 그림은 샘플 모양 그대로 둡니다. 표가 깨지지 않게 하기
+              위해서입니다.
+            </div>
+
             <div className="foot-nav">
               <button className="btn btn-ghost" onClick={() => setStep(1)}>
                 이전
@@ -409,6 +485,15 @@ export default function Home() {
                 <br />
                 파일이 커서 <b>1~2분쯤</b> 걸립니다. 창을 닫지 말고 기다려 주세요.
               </p>
+              <div className="info">
+                문서 설정: <b>{describeSetting(setting)}</b>
+                {isEmptySetting(setting) && (
+                  <>
+                    <br />
+                    지자체가 글꼴이나 여백을 정해 두었다면 <b>목차 다시 고치기</b>에서 넣어 주세요.
+                  </>
+                )}
+              </div>
               {busy && (
                 <div className="info">
                   <span

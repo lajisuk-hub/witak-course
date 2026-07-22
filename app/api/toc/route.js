@@ -48,13 +48,19 @@ export async function POST(req) {
 3. 서류 목록이 아닌 문장(일정, 문의처, 심사방법 등)은 넣지 않는다.
 4. 각 항목마다, 아래 "샘플 꼭지 목록"에서 가장 잘 맞는 것 하나의 id를 matchId 에 넣는다.
    확실히 맞는 것이 없으면 matchId 는 null 로 둔다. 억지로 맞추지 마라.
-5. 큰따옴표(")는 값 안에 절대 쓰지 마라.
+5. 공고문에 **문서 작성 요령(글꼴·글자크기·줄간격·여백)**이 적혀 있으면 setting 에 담아라.
+   - font: 글꼴 이름 그대로 (예: 휴먼명조). 없으면 빈 문자열
+   - size: 본문 글자 크기 숫자만, 단위 pt (예: 12). 없으면 0
+   - lineSpacing: 줄간격 백분율 숫자만 (예: 160). 없으면 0
+   - margin: 용지 여백 mm 숫자만. 상하좌우가 다르면 가장 많이 나온 값. 없으면 0
+   공고문에 적혀 있지 않은 것은 절대 지어내지 말고 빈 값으로 두어라.
+6. 큰따옴표(")는 값 안에 절대 쓰지 마라.
 
 샘플 꼭지 목록:
 ${list}
 
 반드시 아래 형식의 JSON만 출력하라. 설명 문장은 쓰지 마라.
-{"cityName":"○○시","items":[{"name":"항목 이름","matchId":"샘플id 또는 null"}]}`;
+{"cityName":"○○시","setting":{"font":"","size":0,"lineSpacing":0,"margin":0},"items":[{"name":"항목 이름","matchId":"샘플id 또는 null"}]}`;
 
     const content = [];
     if (kind === 'pdf' && base64) {
@@ -95,8 +101,20 @@ ${list}
       );
     }
 
+    const num = (v) => {
+      const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''));
+      return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+    };
+    const st = data.setting || {};
+
     return Response.json({
       cityName: data.cityName || '',
+      setting: {
+        font: String(st.font || '').trim(),
+        size: num(st.size),
+        lineSpacing: num(st.lineSpacing),
+        margin: num(st.margin),
+      },
       items: data.items
         .filter((it) => it && it.name)
         .map((it) => ({
