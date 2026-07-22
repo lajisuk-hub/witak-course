@@ -27,7 +27,8 @@ export default function Guide() {
 
   function confirm() {
     markDone('guide');
-    window.location.href = '/step1';
+    // 가장 먼저 할 일은 우리 지자체 목차 정하기다
+    window.location.href = '/toc';
   }
 
   if (!authed || !me || !ready || !coaching) return null;
@@ -107,7 +108,7 @@ export default function Guide() {
             내가 쓴 내용 다시 보기
           </a>
           <button className="btn btn-gold" onClick={confirm}>
-            확인하였습니다 · 자기소개서 시작하기 →
+            확인하였습니다 · 위탁문서 목차 정하기 →
           </button>
         </div>
       </div>

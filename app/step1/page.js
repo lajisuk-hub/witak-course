@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { loadAll, patch, markDone } from '@/lib/store';
 import ContactBar from '@/app/ContactBar';
 import { buildDocHwpx, downloadBlob } from '@/lib/hwpx';
+import { downloadMergedDoc } from '@/lib/mergedDoc';
 import { useMe } from '@/lib/auth';
 
 // 질문 구성·문단 구조·문체 3종·목표 분량은
@@ -133,6 +134,7 @@ export default function Step1() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [tocReady, setTocReady] = useState(false);
+  const [mergeBusy, setMergeBusy] = useState('');
 
   useEffect(() => {
     if (!authed || !me) return;
@@ -205,6 +207,21 @@ export default function Step1() {
     markDone(1);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  }
+
+  // 저장하고, 목차 + 지금까지 쓴 내용이 합쳐진 문서를 받는다
+  async function saveAndMerge() {
+    setError('');
+    patch({ introDraft: draft });
+    markDone(1);
+    setMergeBusy('내 문서를 만드는 중입니다... (1~2분 걸립니다. 창을 닫지 마세요)');
+    try {
+      await downloadMergedDoc(setMergeBusy);
+    } catch (e) {
+      setError('문서 만들기 실패: ' + e.message);
+    } finally {
+      setMergeBusy('');
+    }
   }
 
   function fullText() {
@@ -432,17 +449,14 @@ export default function Step1() {
               {saved && <div className="info">저장했습니다.</div>}
 
               <div className="row" style={{ marginTop: 4 }}>
-                <button className="btn btn-gold" onClick={download} disabled={!!busy || !draft.para1}>
-                  한글 파일(.hwpx)로 내려받기
+                <button className="btn btn-ghost" onClick={() => ask('polish')} disabled={!!busy}>
+                  한 번 더 다듬기
                 </button>
                 <button className="btn btn-ghost" onClick={copy} disabled={!!busy}>
                   복사
                 </button>
-                <button className="btn btn-ghost" onClick={() => ask('polish')} disabled={!!busy}>
-                  한 번 더 다듬기
-                </button>
-                <button className="btn btn-ghost" onClick={save} disabled={!!busy}>
-                  저장하고 완료 표시
+                <button className="btn btn-ghost" onClick={download} disabled={!!busy || !draft.para1}>
+                  자기소개서만 받기
                 </button>
                 <button className="btn btn-ghost" onClick={() => window.print()} disabled={!!busy}>
                   인쇄 / PDF
@@ -480,16 +494,44 @@ export default function Step1() {
               </div>
             </div>
 
-            <div className="card welcome noprint">
-              <h2>이 글은 문서 어디에 들어가나요?</h2>
+            <div className="card done-card noprint">
+              <h2>내 문서에 넣기</h2>
               <p>
-                여기서 만드신 자기소개서는 통합 위탁 서류의{' '}
-                <b>&lsquo;위탁 운영자 상세내역(이력·경력 / 자기소개서)&rsquo;</b> 자리에 자동으로
-                들어갑니다.
+                이 자기소개서는 <b>목차까지 정해진 내 위탁 서류</b>의
+                {' '}<b>&lsquo;위탁 운영자 상세내역&rsquo;</b> 자리에 그대로 들어갑니다.
                 <br />
-                <a href="/toc">0차시 화면</a>에서 <b>한글 파일 내려받기</b>를 누르시면, 이 내용이
-                합쳐진 문서 한 부를 받으실 수 있습니다. 나중에 여기로 돌아와 고치고 다시 받으셔도
-                됩니다.
+                아래를 누르시면 <b>목차 + 자기소개서</b>가 합쳐진 문서 한 부를 받으실 수 있습니다.
+              </p>
+
+              {mergeBusy && (
+                <div className="info">
+                  <span className="spin" style={{ borderColor: '#1a3a5c', borderTopColor: 'transparent' }} />
+                  {mergeBusy}
+                </div>
+              )}
+
+              <div className="row" style={{ marginTop: 14 }}>
+                <button
+                  className="btn btn-gold"
+                  onClick={saveAndMerge}
+                  disabled={!!busy || !!mergeBusy || !draft.para1}
+                >
+                  자기소개서까지 넣은 내 문서 받기
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    save();
+                    window.location.href = '/';
+                  }}
+                  disabled={!!busy || !!mergeBusy}
+                >
+                  저장하고 메인으로 →
+                </button>
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--muted)', margin: '10px 0 0' }}>
+                ※ 다음 차시(예산서)를 마치면 <b>목차 + 자기소개서 + 예산서</b>까지 합쳐진 문서가
+                나옵니다. 이렇게 쌓여서 마지막에 하나의 완성 문서가 됩니다.
               </p>
             </div>
 

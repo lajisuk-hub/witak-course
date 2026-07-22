@@ -203,10 +203,10 @@ export default function Home() {
         {/* 2단계 ─ 공고문 */}
         {step === 1 && (
           <div className="card">
-            <h2>공고문의 목차를 PDF로 올려 주세요</h2>
+            <h2>내가 위탁받고자 하는 지역의 목차를 PDF로 올려 주세요</h2>
             <p className="sub">
-              우리 지자체 공고문에서 <b>제출서류 목차가 들어 있는 부분</b>을 올려 주시면, 그 안의
-              목차를 찾아 정리해 드립니다. 공고문 전체를 올리셔도 됩니다.
+              공고문에서 <b>제출서류 목차가 들어 있는 부분</b>을 올려 주시면, 제가 읽어서 정리해
+              드립니다. 공고문 전체를 올리셔도 됩니다.
             </p>
 
             <div className="drop">
@@ -266,13 +266,15 @@ export default function Home() {
         {/* 3단계 ─ 목차 확인 */}
         {step === 2 && (
           <div className="card">
-            <h2>이렇게 정리했습니다 · 맞는지 봐주세요</h2>
-            <p className="sub">
-              공고문에서 찾은 <b>제출서류 목차</b>입니다. 틀린 곳은 고치고, 빠진 것은 더하고,
-              순서도 바꾸실 수 있습니다.
+            <h2>공고문을 읽어 목차를 이렇게 정리했습니다</h2>
+            <div className="info" style={{ marginTop: 0 }}>
+              <b>이 목차를 그대로 사용하시겠습니까? 아니면 수정하시겠습니까?</b>
               <br />
-              다 확인하셨으면 맨 아래 <b>문서에 반영하기</b>를 눌러 주세요.
-            </p>
+              그대로 쓰시려면 맨 아래 <b>이 목차로 문서에 반영하기</b>를 누르세요.
+              <br />
+              고치시려면 아래에서 <b>이름을 고치거나, 순서를 바꾸거나, 항목을 더하고 빼신 뒤</b>{' '}
+              누르시면 됩니다.
+            </div>
 
             {items.map((it, i) => (
               <div className="item" key={i}>
@@ -398,7 +400,7 @@ export default function Home() {
                 }}
                 disabled={!items.length}
               >
-                문서에 반영하기 →
+                이 목차로 문서에 반영하기 →
               </button>
             </div>
           </div>
@@ -416,13 +418,14 @@ export default function Home() {
                 이제 <b>차시를 진행하시면 그 내용이 이 문서의 제자리에 채워집니다.</b>
               </p>
               <div className="row" style={{ marginTop: 14 }}>
-                <a className="btn btn-gold" href="/step1">
-                  1차시 자기소개서 하러 가기 →
-                </a>
-                <a className="btn btn-ghost" href="/">
-                  차시 목록으로
+                <a className="btn btn-gold" href="/">
+                  메인 화면으로 돌아가기 →
                 </a>
               </div>
+              <p style={{ fontSize: 13.5, color: 'var(--muted)', margin: '10px 0 0' }}>
+                메인 화면에서 <b>0차시가 완료</b>로 바뀌고, 다음 차시들이 열립니다. 거기서
+                자기소개서부터 순서대로 진행하시면 됩니다.
+              </p>
             </div>
 
             <div className="card">

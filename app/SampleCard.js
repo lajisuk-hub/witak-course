@@ -2,11 +2,9 @@
 
 import { useState } from 'react';
 import { COURSE } from '@/lib/course';
-import { loadAll, loadSections, markDone } from '@/lib/store';
-import { DEFAULT_SECTIONS } from '@/lib/sampleSections';
-import { loadWritten } from '@/lib/written';
-import { buildHwpx, downloadBlob } from '@/lib/hwpx';
+import { loadAll } from '@/lib/store';
 import { describeSetting } from '@/lib/docSetting';
+import { downloadMergedDoc } from '@/lib/mergedDoc';
 
 // 문서 샘플이 어떻게 쓰이는지 설명하고, 문서를 내려받게 해준다.
 export default function SampleCard({ phone }) {
@@ -22,18 +20,7 @@ export default function SampleCard({ phone }) {
     setError('');
     setBusy('문서를 만드는 중입니다... (1~2분 걸립니다. 창을 닫지 마세요)');
     try {
-      const sections = loadSections(DEFAULT_SECTIONS);
-      const blob = await buildHwpx({
-        city: d.city,
-        center: d.center,
-        applicant: d.applicant,
-        items: d.items,
-        written: loadWritten(sections),
-        setting: d.setting,
-        onProgress: setBusy,
-      });
-      downloadBlob(blob, `${d.city || '위탁'}_위탁운영계획서.hwpx`);
-      markDone(0);
+      await downloadMergedDoc(setBusy);
     } catch (e) {
       setError('문서 만들기 실패: ' + e.message);
     } finally {
