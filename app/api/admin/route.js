@@ -50,15 +50,28 @@ export async function POST(req) {
   }
 }
 
-// 할 일 지우기 / 수강생 이용 막기·풀기
+// 할 일 고치기·지우기 / 수강생 이용 막기·풀기
 export async function PATCH(req) {
   try {
     if (!allowed(req)) return NO();
-    const { action, id, phone, allowed: allow } = await req.json();
+    const body = await req.json();
+    const { action, id, phone, allowed: allow } = body;
 
     if (action === 'deleteTask' && id) {
       await remove('witak_tasks', `id=eq.${Number(id)}`);
       return Response.json({ ok: true });
+    }
+    if (action === 'updateTask' && id) {
+      if (!body.due_date || !String(body.title || '').trim()) {
+        return Response.json({ error: '날짜와 제목은 꼭 있어야 합니다.' }, { status: 400 });
+      }
+      const [row] = await update('witak_tasks', `id=eq.${Number(id)}`, {
+        due_date: body.due_date,
+        title: String(body.title).trim(),
+        detail: body.detail ? String(body.detail).trim() : null,
+        step: body.step === '' || body.step == null ? null : Number(body.step),
+      });
+      return Response.json({ task: row });
     }
     if (action === 'setAllowed' && phone) {
       await update('witak_students', `phone=eq.${encodeURIComponent(phone)}`, {

@@ -27,6 +27,8 @@ export default function Admin() {
 
   // 새 할 일
   const [form, setForm] = useState({ due_date: '', title: '', detail: '', step: '' });
+  // 고치는 중인 할 일
+  const [edit, setEdit] = useState(null);
   // 새 메모·전달사항 (step = -1 로 저장한다)
   const [memo, setMemo] = useState({ due_date: '', title: '', detail: '' });
 
@@ -180,6 +182,38 @@ export default function Admin() {
       setForm({ due_date: form.due_date, title: '', detail: '', step: '' });
       await load(pw);
       setMsg('올렸습니다');
+      setTimeout(() => setMsg(''), 1800);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveEdit() {
+    if (!edit) return;
+    setError('');
+    setBusy(true);
+    try {
+      const orig = tasks.find((t) => t.id === edit.id);
+      const res = await fetch('/api/admin', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pw': pw },
+        body: JSON.stringify({
+          action: 'updateTask',
+          id: edit.id,
+          due_date: edit.due_date,
+          title: edit.title,
+          detail: edit.detail,
+          // 전달사항은 계속 전달사항으로 둔다
+          step: orig && orig.step === MEMO ? MEMO : edit.step,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '고치지 못했습니다');
+      setEdit(null);
+      await load(pw);
+      setMsg('고쳤습니다');
       setTimeout(() => setMsg(''), 1800);
     } catch (e) {
       setError(e.message);
@@ -386,11 +420,72 @@ export default function Admin() {
 
             <div className="card">
               <h2>올린 할 일 ({tasks.length}개)</h2>
+              <p className="sub">
+                제목을 고치시려면 <b>고치기</b>를 누르세요. 날짜·설명·차시도 함께 바꿀 수 있습니다.
+              </p>
+
               {tasks.length === 0 ? (
                 <p className="sub" style={{ margin: 0 }}>아직 올린 할 일이 없습니다.</p>
               ) : (
                 tasks.map((t) => {
                   const n = checks.filter((c) => c.task_id === t.id).length;
+                  const editing = edit && edit.id === t.id;
+
+                  if (editing) {
+                    return (
+                      <div className="item" key={t.id} style={{ borderColor: 'var(--gold)' }}>
+                        <div className="grid2">
+                          <div>
+                            <label>날짜</label>
+                            <input
+                              type="date"
+                              value={edit.due_date}
+                              onChange={(e) => setEdit({ ...edit, due_date: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label>관련 차시 (없으면 비움)</label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={edit.step}
+                              onChange={(e) => setEdit({ ...edit, step: e.target.value })}
+                              placeholder="예) 1"
+                              disabled={t.step === MEMO}
+                            />
+                          </div>
+                        </div>
+
+                        <label>{t.step === MEMO ? '제목' : '할 일'}</label>
+                        <input
+                          type="text"
+                          value={edit.title}
+                          onChange={(e) => setEdit({ ...edit, title: e.target.value })}
+                        />
+
+                        <label>설명</label>
+                        <textarea
+                          value={edit.detail}
+                          onChange={(e) => setEdit({ ...edit, detail: e.target.value })}
+                          style={{ minHeight: 80 }}
+                        />
+
+                        <div className="row right" style={{ marginTop: 12 }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setEdit(null)}>
+                            취소
+                          </button>
+                          <button
+                            className="btn btn-sm"
+                            onClick={saveEdit}
+                            disabled={busy || !edit.due_date || !edit.title.trim()}
+                          >
+                            저장
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div className="item" key={t.id}>
                       <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -406,9 +501,25 @@ export default function Admin() {
                             </>
                           )}
                         </div>
-                        <button className="btn btn-ghost btn-sm" onClick={() => del(t.id)}>
-                          지우기
-                        </button>
+                        <div className="row">
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() =>
+                              setEdit({
+                                id: t.id,
+                                due_date: t.due_date,
+                                title: t.title,
+                                detail: t.detail || '',
+                                step: t.step == null || t.step === MEMO ? '' : String(t.step),
+                              })
+                            }
+                          >
+                            고치기
+                          </button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => del(t.id)}>
+                            지우기
+                          </button>
+                        </div>
                       </div>
                       {t.detail && <div className="meta">{t.detail}</div>}
                     </div>
