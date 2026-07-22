@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { COURSE } from '@/lib/course';
+import { FORMS } from '@/lib/forms';
 import { loadAll } from '@/lib/store';
 
 // 문서가 어떻게 만들어지고 모이는지 안내하고, 마지막 전체 서식을 받게 해준다.
@@ -11,7 +11,9 @@ export default function SampleCard({ phone }) {
 
   const d = loadAll();
   const hasToc = Array.isArray(d.items) && d.items.length > 0;
-  const doneSteps = COURSE.filter((c) => d.done?.[String(c.no)]);
+  // 끝낸 차시를 '문서 이름'으로 보여 준다
+  const madeDocs = FORMS.filter((f) => f.step != null && d.done?.[String(f.step)]);
+  const restDocs = FORMS.filter((f) => f.step != null && !d.done?.[String(f.step)]);
 
   async function downloadFinal() {
     setError('');
@@ -66,14 +68,17 @@ export default function SampleCard({ phone }) {
             )}
           </li>
           <li>
-            {doneSteps.length > 0 ? (
+            {madeDocs.length > 0 ? (
               <>
-                받으신 문서 — <b>{doneSteps.map((c) => c.title).join(', ')}</b>
+                만든 문서 — <b>{madeDocs.map((f) => f.name).join(', ')}</b>
               </>
             ) : (
               <>아직 만든 문서가 없습니다</>
             )}
           </li>
+          {restDocs.length > 0 && (
+            <li>남은 문서 — {restDocs.map((f) => f.name).join(', ')}</li>
+          )}
         </ul>
 
         {busy && (
@@ -84,17 +89,36 @@ export default function SampleCard({ phone }) {
         )}
 
         <div className="row" style={{ marginTop: 12 }}>
-          <button className="btn btn-ghost" onClick={downloadFinal} disabled={!!busy}>
-            전체 문서 서식 받기
-          </button>
           <a className="btn btn-ghost" href="/toc">
-            목차 고치기
+            목차 다시 보기 · 고치기
           </a>
         </div>
-        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '10px 0 0' }}>
-          ※ 전체 문서 서식은 <b>모든 차시를 마친 뒤</b> 각 문서를 옮겨 담아 정리하실 때 쓰는
-          것입니다. 아직 안 올라왔으면 라지숙 소장에게 문의해 주세요.
-        </p>
+      </div>
+
+      {/* ── 마지막 단계 ── */}
+      <div className="card" style={{ padding: 16 }}>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <div>
+            <b style={{ color: 'var(--navy)' }}>
+              마지막 단계 · 전체 문서로 합치기
+              {restDocs.length === 0 && madeDocs.length > 0 && (
+                <span className="badge ok">지금 하실 차례</span>
+              )}
+            </b>
+            <div className="meta">
+              모든 차시를 마치시면, 여기서 <b>전체 문서 서식</b>을 받아 그동안 만든 문서들을 옮겨
+              담아 한 부로 완성하시면 됩니다.
+              {restDocs.length > 0 && (
+                <>
+                  <br />▸ 아직 <b>{restDocs.length}가지</b> 문서가 남았습니다.
+                </>
+              )}
+            </div>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={downloadFinal} disabled={!!busy}>
+            전체 서식 받기
+          </button>
+        </div>
       </div>
     </>
   );
