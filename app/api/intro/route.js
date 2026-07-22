@@ -39,24 +39,30 @@ const COMPETENCIES = [
   '전문지식·기술 영역',
 ];
 
-function extractJson(text) {
+// 긴 글에 줄바꿈이 섞이면 JSON 이 깨지므로, 구분선으로 나눠 받는다.
+// (wmentor-journal 에서 겪은 AI JSON 깨짐 교훈)
+const MARKS = [
+  ['para1', '[1]'],
+  ['para2', '[2]'],
+  ['para3', '[3]'],
+  ['closing', '[맺음말]'],
+];
+
+function splitByMarks(text) {
   if (!text) return null;
-  let s = text.trim();
-  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fence) s = fence[1].trim();
-  const start = s.indexOf('{');
-  const end = s.lastIndexOf('}');
-  if (start === -1 || end === -1) return null;
-  s = s.slice(start, end + 1);
-  try {
-    return JSON.parse(s);
-  } catch {
-    try {
-      return JSON.parse(s.replace(/,\s*([}\]])/g, '$1'));
-    } catch {
-      return null;
-    }
-  }
+  const s = String(text).replace(/\r\n/g, '\n');
+  const found = MARKS.map(([key, mark]) => ({ key, mark, at: s.indexOf(mark) })).filter(
+    (m) => m.at !== -1
+  );
+  if (!found.length) return null;
+  found.sort((a, b) => a.at - b.at);
+  const out = {};
+  found.forEach((m, i) => {
+    const from = m.at + m.mark.length;
+    const to = i + 1 < found.length ? found[i + 1].at : s.length;
+    out[m.key] = s.slice(from, to).trim();
+  });
+  return out.para1 ? out : null;
 }
 
 export async function POST(req) {
@@ -107,13 +113,23 @@ export async function POST(req) {
    재료에 맞는 역량만 고르고, 억지로 여러 개를 붙이지 마라.
 6. para3 의 운영 3가지 축은 재료에 적힌 순서대로 **줄바꿈으로 구분해** 쓴다.
 7. 재료에 없는 경력·수상·자격·숫자를 지어내지 마라. 없는 것은 쓰지 않는다.
-8. 세 문단과 맺음말을 합한 분량은 공백 제외 **850~950자**. 이 범위를 지켜라.
+8. 분량은 **A4 한 장을 꽉 채우는 정도**로 쓴다. 세 문단과 맺음말을 합해 공백 제외 **1,200~1,400자**.
+   문단별 대략의 목표는 para1 약 350자, para2 약 400자, para3 약 420자, closing 약 130자다.
+   짧게 끝내지 마라. 재료가 적으면 지어내지 말고, 이미 적힌 내용을 **더 구체적으로 풀어** 분량을 채운다.
+   (예: 경력은 어떤 연령을 맡았고 무엇을 배웠는지, 운영 축은 어떻게 실행할지까지 이어서 쓴다)
 9. 문체: ${t.guide}
 10. 모두 존댓말(~습니다/~하였습니다)로 쓴다. 이모지는 쓰지 마라.
-11. 큰따옴표(")는 값 안에 절대 쓰지 마라. 강조가 필요하면 작은따옴표를 쓴다.
+11. 큰따옴표(")는 쓰지 마라. 강조가 필요하면 작은따옴표를 쓴다.
 
-반드시 아래 형식의 JSON만 출력하라. 설명 문장은 쓰지 마라.
-{"para1":"...","para2":"...","para3":"...","closing":"..."}`;
+출력 형식은 아래와 같다. 구분선을 그대로 쓰고, 그 밖의 설명 문장은 절대 붙이지 마라.
+[1]
+(지원동기 및 보육철학 문단)
+[2]
+(보육경력 및 전문성 문단)
+[3]
+(운영 비전 및 실행 계획 문단)
+[맺음말]
+(맺음말)`;
 
     const prompt =
       mode === 'polish' && current
@@ -123,16 +139,13 @@ export async function POST(req) {
 ${material}
 
 --- 지금 자기소개서 ---
-1. 지원동기 및 보육철학
+[1]
 ${current.para1 || ''}
-
-2. 보육경력 및 전문성
+[2]
 ${current.para2 || ''}
-
-3. 운영 비전 및 실행 계획
+[3]
 ${current.para3 || ''}
-
-맺음말
+[맺음말]
 ${current.closing || ''}
 
 ${rules}`
@@ -146,20 +159,21 @@ ${rules}`;
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const msg = await client.messages.create({
       model: MODEL,
-      max_tokens: 4000,
+      max_tokens: 10000, // A4 한 장 분량(1,200~1,400자)이라 넉넉히 잡는다
       thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
     });
 
     const raw = msg.content.map((c) => (c.type === 'text' ? c.text : '')).join('');
-    const data = extractJson(raw);
+    const data = splitByMarks(raw);
 
     if (!data || !data.para1) {
-      console.error('자기소개서 파싱 실패:', raw.slice(0, 500));
-      return Response.json(
-        { error: '글을 만들지 못했습니다. 잠시 뒤 다시 눌러 주세요.' },
-        { status: 500 }
-      );
+      console.error('자기소개서 파싱 실패:', msg.stop_reason, raw.slice(0, 500));
+      const why =
+        msg.stop_reason === 'max_tokens'
+          ? '글이 너무 길어져 중간에 끊겼습니다. 다시 한 번 눌러 주세요.'
+          : '글을 만들지 못했습니다. 잠시 뒤 다시 눌러 주세요.';
+      return Response.json({ error: why }, { status: 500 });
     }
 
     const s = (v) => String(v == null ? '' : v).trim();

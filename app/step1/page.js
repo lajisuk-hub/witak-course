@@ -258,7 +258,7 @@ export default function Step1() {
   if (!ready) return null;
 
   const chars = (draft.para1 + draft.para2 + draft.para3 + draft.closing).replace(/\s/g, '').length;
-  const pct = Math.min(100, Math.round((chars / 950) * 100));
+  const pct = Math.min(100, Math.round((chars / 1400) * 100));
 
   return (
     <>
@@ -381,7 +381,9 @@ export default function Step1() {
                 <div className="bar">
                   <i style={{ width: pct + '%' }} />
                 </div>
-                <span className="target">목표 850~950자</span>
+                <span className="target">목표 1,200~1,400자 (A4 한 장)</span>
+                {chars > 0 && chars < 1100 && <span className="short">조금 짧습니다</span>}
+                {chars > 1550 && <span className="short">조금 깁니다</span>}
               </div>
 
               {busy && (
