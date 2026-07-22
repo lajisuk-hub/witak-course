@@ -446,6 +446,19 @@ export default function Step1() {
               </div>
             </div>
 
+            <div className="card welcome noprint">
+              <h2>이 글은 문서 어디에 들어가나요?</h2>
+              <p>
+                여기서 만드신 자기소개서는 통합 위탁 서류의{' '}
+                <b>&lsquo;위탁 운영자 상세내역(이력·경력 / 자기소개서)&rsquo;</b> 자리에 자동으로
+                들어갑니다.
+                <br />
+                <a href="/toc">0차시 화면</a>에서 <b>한글 파일 내려받기</b>를 누르시면, 이 내용이
+                합쳐진 문서 한 부를 받으실 수 있습니다. 나중에 여기로 돌아와 고치고 다시 받으셔도
+                됩니다.
+              </p>
+            </div>
+
             <ContactBar />
 
             <div className="foot-nav noprint">

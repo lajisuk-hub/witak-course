@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_SECTIONS } from '@/lib/sampleSections';
 import { loadSections, saveSections } from '@/lib/store';
 
@@ -26,9 +26,61 @@ export default function Admin() {
   // 새 할 일
   const [form, setForm] = useState({ due_date: '', title: '', detail: '', step: '' });
 
-  // 문서 꼭지 (이 컴퓨터에만 저장)
+  // 문서 항목 (이 컴퓨터에만 저장)
   const [list, setList] = useState(DEFAULT_SECTIONS);
   const [open, setOpen] = useState(null);
+
+  // 문서 샘플 올리기
+  const sampleRef = useRef(null);
+  const [upBusy, setUpBusy] = useState('');
+  const [upDone, setUpDone] = useState('');
+
+  async function uploadSample(e) {
+    const f = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!f) return;
+    if (!f.name.toLowerCase().endsWith('.hwpx')) {
+      setError('한글 문서(.hwpx) 파일만 올릴 수 있습니다.');
+      return;
+    }
+    setError('');
+    setUpDone('');
+    setUpBusy('올리기 준비 중입니다...');
+    try {
+      const ticket = await fetch('/api/sample-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pw': pw },
+        body: JSON.stringify({}),
+      });
+      const info = await ticket.json();
+      if (!ticket.ok) throw new Error(info.error || '올리기 표를 받지 못했습니다');
+
+      setUpBusy(`올리는 중입니다... (${Math.round(f.size / 1024 / 1024)}MB, 1~2분 걸립니다)`);
+      const put = await fetch(info.url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: f,
+      });
+      if (!put.ok) throw new Error('올리지 못했습니다. 잠시 뒤 다시 해보세요.');
+
+      setUpBusy('마무리하는 중입니다...');
+      const fin = await fetch('/api/sample-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pw': pw },
+        body: JSON.stringify({ finalize: info.temp }),
+      });
+      const finData = await fin.json();
+      if (!fin.ok) throw new Error(finData.error || '마무리하지 못했습니다');
+
+      setUpDone(
+        `올렸습니다. (${f.name}, ${Math.round(f.size / 1024 / 1024)}MB) 예전 샘플은 이전샘플 폴더에 보관했습니다.`
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpBusy('');
+    }
+  }
 
   useEffect(() => {
     setList(loadSections(DEFAULT_SECTIONS));
@@ -177,8 +229,11 @@ export default function Admin() {
           <div className={tab === 'progress' ? 'on' : ''} onClick={() => setTab('progress')} style={{ cursor: 'pointer' }}>
             수강생 진도 ({students.length}명)
           </div>
+          <div className={tab === 'sample' ? 'on' : ''} onClick={() => setTab('sample')} style={{ cursor: 'pointer' }}>
+            문서 샘플
+          </div>
           <div className={tab === 'sections' ? 'on' : ''} onClick={() => setTab('sections')} style={{ cursor: 'pointer' }}>
-            문서 꼭지
+            문서 항목
           </div>
         </div>
 
@@ -313,7 +368,60 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ── 문서 꼭지 ── */}
+        {/* ── 문서 샘플 올리기 ── */}
+        {tab === 'sample' && (
+          <>
+            <div className="card welcome">
+              <h2>수강생 서류의 뼈대가 되는 문서입니다</h2>
+              <p>
+                여기 올리신 한글 문서(.hwpx)를 바탕으로, 수강생마다 자기 지자체 목차 순서에 맞춰
+                서류가 만들어집니다. 수강생이 차시에서 쓴 내용도 이 문서의 해당 자리에 들어갑니다.
+                <br />
+                <b>로그인한 수강생만</b> 받을 수 있고, 주소를 알아도 밖에서는 열 수 없습니다.
+              </p>
+            </div>
+
+            <div className="card">
+              <h2>새 문서 샘플 올리기</h2>
+              <p className="sub">
+                한글에서 <b>다른 이름으로 저장 → 한글 문서(*.hwpx)</b> 로 저장한 파일을 올려
+                주세요.
+              </p>
+
+              <div className="drop">
+                <p style={{ margin: '0 0 12px' }}>
+                  <strong>.hwpx</strong> 파일 (최대 50MB)
+                </p>
+                <button className="btn" onClick={() => sampleRef.current?.click()} disabled={!!upBusy}>
+                  파일 고르기
+                </button>
+                <input
+                  ref={sampleRef}
+                  type="file"
+                  accept=".hwpx"
+                  onChange={uploadSample}
+                  style={{ display: 'none' }}
+                />
+              </div>
+
+              {upBusy && (
+                <div className="info">
+                  <span className="spin" style={{ borderColor: '#1a3a5c', borderTopColor: 'transparent' }} />
+                  {upBusy}
+                </div>
+              )}
+              {upDone && <div className="info">{upDone}</div>}
+
+              <div className="warn">
+                <b>중요합니다.</b> 새 샘플을 올리시면 문서 내용이 바뀌기 때문에, 어느 부분이 어느
+                항목인지 <b>다시 나눠 주는 작업</b>이 한 번 필요합니다. 올리신 뒤 저(개발자)에게
+                알려 주세요. 그 작업 전까지 수강생에게는 <b>이전 샘플</b>이 나갑니다.
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── 문서 항목 ── */}
         {tab === 'sections' && (
           <>
             <div className="card">

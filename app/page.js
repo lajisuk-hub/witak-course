@@ -6,6 +6,7 @@ import { loadAll } from '@/lib/store';
 import { useMe, logout } from '@/lib/auth';
 import CalendarBoard from '@/app/CalendarBoard';
 import ContactBar from '@/app/ContactBar';
+import SampleCard from '@/app/SampleCard';
 
 export default function Home() {
   const { me, ready } = useMe();
@@ -49,43 +50,54 @@ export default function Home() {
       </div>
 
       <div className="wrap">
-        {/* ① 나의 강점 — 언제나 맨 위 */}
+        {/* ① 내가 노력해야 할 부분 — 언제나 맨 위 */}
         {coaching && (
           <div className="card mine-card">
-            <h2>{me.name} 원장님의 강점</h2>
-            {coaching.strengths?.length > 0 && (
-              <ul className="pts ok">
-                {coaching.strengths.map((s, i) => (
+            <h2>{me.name} 원장님이 이번 과정에서 노력하실 부분</h2>
+            <p className="sub">첫 인터뷰에서 쓰신 내용을 바탕으로 정리한 것입니다.</p>
+
+            {coaching.focus?.length > 0 && (
+              <ul className="pts focus">
+                {coaching.focus.map((s, i) => (
                   <li key={i}>{s}</li>
                 ))}
               </ul>
             )}
-            {coaching.focus?.length > 0 && (
+
+            {coaching.weaknesses?.length > 0 && (
               <>
-                <h3 className="mini">이 부분을 확실하게 공부하시면 좋겠어요</h3>
-                <ul className="pts focus">
-                  {coaching.focus.map((s, i) => (
+                <h3 className="mini">조금 더 채우면 좋을 점</h3>
+                <ul className="pts warn-list">
+                  {coaching.weaknesses.map((s, i) => (
                     <li key={i}>{s}</li>
                   ))}
                 </ul>
               </>
             )}
+
+            {coaching.strengths?.length > 0 && (
+              <>
+                <h3 className="mini">이미 잘 갖추고 계신 점</h3>
+                <ul className="pts ok">
+                  {coaching.strengths.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+
             <div className="row" style={{ marginTop: 12 }}>
               <a className="btn btn-ghost btn-sm" href="/guide">
                 한 달 공부 계획 보기
               </a>
               <a className="btn btn-ghost btn-sm" href="/start">
-                첫 인터뷰 내용 보기
+                첫 인터뷰 다시 보기
               </a>
             </div>
           </div>
         )}
 
-        {/* ② 달력 일정 */}
-        <h2 className="section">이번 달 일정</h2>
-        <CalendarBoard phone={me.phone} />
-
-        {/* ③ 차시 목록 */}
+        {/* ② 차시 목록 */}
         <h2 className="section">차시 목록</h2>
         <div className="card">
           <p className="sub">
@@ -117,6 +129,24 @@ export default function Home() {
             );
           })}
         </div>
+
+        {/* ③ 문서 샘플 안내 */}
+        <h2 className="section">우리 문서는 이렇게 쌓입니다</h2>
+        <SampleCard phone={me.phone} />
+
+        {/* ④ 달력 일정 */}
+        <h2 className="section">한 달 일정 달력</h2>
+        <div className="card welcome">
+          <h2>달력 쓰는 법</h2>
+          <p>
+            라지숙 소장이 <b>날짜별로 할 일</b>을 올려 드립니다.
+            <br />① 날짜를 눌러 그날 할 일을 봅니다 · ② 다 하셨으면 <b>할 일을 눌러 체크</b>합니다 ·
+            ③ 체크한 날은 달력에 <b>✓</b> 가 붙습니다.
+            <br />
+            숫자가 붙은 날은 그날 할 일이 몇 개인지 뜻합니다.
+          </p>
+        </div>
+        <CalendarBoard phone={me.phone} />
 
         <ContactBar />
 
