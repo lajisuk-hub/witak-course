@@ -132,6 +132,7 @@ export default function Step1() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [tocReady, setTocReady] = useState(false);
 
   useEffect(() => {
     if (!authed || !me) return;
@@ -142,6 +143,7 @@ export default function Step1() {
       career: d.answers?.career || '',
       reason: d.answers?.reason || '',
     };
+    setTocReady(Array.isArray(d.items) && d.items.length > 0);
     setForm({ ...pre, ...(d.introForm || {}) });
     if (d.introTone) setTone(d.introTone);
     if (d.introDraft?.para1) {
@@ -259,6 +261,38 @@ export default function Step1() {
   }
 
   if (!authed || !me || !ready) return null;
+
+  // 목차를 먼저 정리해야 차시로 들어올 수 있다
+  if (!tocReady) {
+    return (
+      <>
+        <div className="head">
+          <h1>1차시 · 자기소개서 작성하기</h1>
+          <p>먼저 하실 일이 있습니다</p>
+          <a href="/">← 차시 목록으로</a>
+        </div>
+        <div className="wrap" style={{ maxWidth: 560 }}>
+          <div className="card welcome">
+            <h2>먼저 우리 지자체 목차를 정리해 주세요</h2>
+            <p>
+              자기소개서는 <b>통합 위탁 서류의 한 부분</b>으로 들어갑니다. 그래서 우리 지자체
+              목차가 먼저 정해져야 어느 자리에 넣을지 알 수 있습니다.
+              <br />
+              0차시에서 <b>공고문의 목차를 올리고 문서에 반영</b>하신 뒤 다시 오세요.
+            </p>
+            <div className="row" style={{ marginTop: 14 }}>
+              <a className="btn btn-gold" href="/toc">
+                0차시 목차 만들기 하러 가기 →
+              </a>
+              <a className="btn btn-ghost" href="/">
+                차시 목록으로
+              </a>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const chars = (draft.para1 + draft.para2 + draft.para3 + draft.closing).replace(/\s/g, '').length;
   const pct = Math.min(100, Math.round((chars / 1400) * 100));

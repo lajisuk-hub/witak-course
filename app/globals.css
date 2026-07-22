@@ -549,3 +549,12 @@ code.mark {
 .done-card h2 { color: var(--ok); }
 .done-card h2::before { content: '✓ '; }
 .done-card p { margin: 0; font-size: 14.5px; line-height: 1.8; }
+
+/* 아직 못 여는 차시 · 지금 해야 할 차시 */
+.chip.off { cursor: not-allowed; }
+.chip.first {
+  border-color: var(--gold); background: #fffaf0;
+  box-shadow: 0 0 0 2px rgba(200,155,74,.35);
+  font-weight: 700;
+}
+.chip.first b { background: var(--gold); }

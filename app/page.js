@@ -12,6 +12,7 @@ export default function Home() {
   const { me, ready } = useMe();
   const [done, setDone] = useState({});
   const [coaching, setCoaching] = useState(null);
+  const [tocReady, setTocReady] = useState(false); // 0차시 목차를 정리했는지
   const [checkedStart, setCheckedStart] = useState(false);
 
   // 첫 인터뷰는 언제나 맨 처음에. 마치기 전에는 다른 화면을 보여 드리지 않는다.
@@ -28,6 +29,7 @@ export default function Home() {
     }
     setDone(dn);
     setCoaching(d.coaching || null);
+    setTocReady(Array.isArray(d.items) && d.items.length > 0);
     setCheckedStart(true);
   }, []);
 
@@ -99,26 +101,45 @@ export default function Home() {
 
         {/* ② 차시 (작게 나열) */}
         <div className="card chips-card">
-          <p className="sub" style={{ margin: '0 0 12px' }}>
-            차시 · 끝낸 곳은 ✓ 로 표시됩니다. 눌러서 바로 갈 수 있습니다.
-          </p>
+          {tocReady ? (
+            <p className="sub" style={{ margin: '0 0 12px' }}>
+              아래 순서대로 문서를 만드시면 됩니다. 끝낸 곳은 <b>✓</b> 로 표시됩니다.
+            </p>
+          ) : (
+            <div className="warn" style={{ margin: '0 0 14px' }}>
+              <b>아래 순서대로 문서를 제작하면 됩니다.</b>
+              <br />
+              가장 먼저 <b>0. 우리 지자체 목차 만들기</b>를 눌러 이동해서 목차를 정리하세요.
+              <br />
+              목차를 정리해야 다음 차시로 넘어갈 수 있습니다.
+            </div>
+          )}
+
           <div className="chips">
             {COURSE.map((c) => {
               const finished = !!done[String(c.no)];
               const soon = !c.href;
+              const locked = !tocReady && c.no !== 0; // 목차 먼저
               const label = (
                 <>
-                  <b>{finished ? '✓' : c.no}</b>
+                  <b>{locked ? '🔒' : finished ? '✓' : c.no}</b>
                   <span>{c.title}</span>
                 </>
               );
+              if (locked) {
+                return (
+                  <span className="chip off" key={c.no} title="먼저 0차시 목차를 정리해 주세요">
+                    {label}
+                  </span>
+                );
+              }
               return soon ? (
                 <span className="chip off" key={c.no} title={c.desc}>
                   {label}
                 </span>
               ) : (
                 <a
-                  className={`chip${finished ? ' done' : ''}`}
+                  className={`chip${finished ? ' done' : ''}${c.no === 0 && !tocReady ? ' first' : ''}`}
                   key={c.no}
                   href={c.href}
                   title={c.desc}
