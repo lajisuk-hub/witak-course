@@ -1,25 +1,25 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { COURSE } from '@/lib/course';
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+// step 이 이 값이면 체크하는 할 일이 아니라 원장님이 남긴 메모·전달사항이다.
+export const MEMO = -1;
 
 export function ymd(d) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-/**
- * 한 달 달력 + 그날 할 일 체크.
- * 홈 화면과 달력 화면에서 같이 쓴다.
- */
-export default function CalendarBoard({ phone, compact = false }) {
+export default function CalendarBoard({ phone }) {
   const [month, setMonth] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [checked, setChecked] = useState([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
-  const [picked, setPicked] = useState('');
+  const [popup, setPopup] = useState(''); // 눌러서 연 날짜
 
   const today = useMemo(() => ymd(new Date()), []);
 
@@ -37,14 +37,13 @@ export default function CalendarBoard({ phone, compact = false }) {
         if (!res.ok) throw new Error(data.error || '불러오지 못했습니다');
         setTasks(data.tasks || []);
         setChecked(data.checked || []);
-        setPicked(today);
       } catch (e) {
         setError(e.message);
       } finally {
         setBusy(false);
       }
     })();
-  }, [phone, today]);
+  }, [phone]);
 
   const byDate = useMemo(() => {
     const m = {};
@@ -53,6 +52,9 @@ export default function CalendarBoard({ phone, compact = false }) {
     });
     return m;
   }, [tasks]);
+
+  // 체크하는 할 일만 (메모는 뺀다)
+  const todos = useMemo(() => tasks.filter((t) => t.step !== MEMO), [tasks]);
 
   async function toggle(taskId) {
     const on = !checked.includes(taskId);
@@ -80,9 +82,9 @@ export default function CalendarBoard({ phone, compact = false }) {
     cells.push(new Date(month.getFullYear(), month.getMonth(), d));
   }
 
-  const total = tasks.length;
+  const total = todos.length;
   const doneCount = checked.length;
-  const pickedTasks = byDate[picked] || [];
+  const popupList = byDate[popup] || [];
 
   return (
     <>
@@ -114,7 +116,7 @@ export default function CalendarBoard({ phone, compact = false }) {
           </div>
         ) : (
           <>
-            <div className={`cal${compact ? ' small' : ''}`}>
+            <div className="cal">
               {DAYS.map((d, i) => (
                 <div className={`cal-dow${i === 0 ? ' sun' : ''}`} key={d}>
                   {d}
@@ -124,19 +126,19 @@ export default function CalendarBoard({ phone, compact = false }) {
                 if (!d) return <div className="cal-cell empty" key={i} />;
                 const key = ymd(d);
                 const list = byDate[key] || [];
-                const allDone = list.length > 0 && list.every((t) => checked.includes(t.id));
-                const someDone = list.some((t) => checked.includes(t.id));
+                const todoList = list.filter((t) => t.step !== MEMO);
+                const allDone = todoList.length > 0 && todoList.every((t) => checked.includes(t.id));
+                const someDone = todoList.some((t) => checked.includes(t.id));
                 return (
                   <button
                     key={i}
                     className={[
                       'cal-cell',
                       key === today ? 'today' : '',
-                      key === picked ? 'picked' : '',
                       list.length ? 'has' : '',
                       allDone ? 'done' : someDone ? 'part' : '',
                     ].join(' ')}
-                    onClick={() => setPicked(key)}
+                    onClick={() => list.length && setPopup(key)}
                   >
                     <span className={`num${d.getDay() === 0 ? ' sun' : ''}`}>{d.getDate()}</span>
                     {list.length > 0 && (
@@ -158,36 +160,77 @@ export default function CalendarBoard({ phone, compact = false }) {
                 </div>
               </div>
             )}
+
+            {total === 0 && (
+              <p className="sub" style={{ margin: '10px 0 0' }}>
+                아직 올라온 일정이 없습니다. 올라오면 이 달력에 표시됩니다.
+              </p>
+            )}
           </>
         )}
       </div>
 
-      {!busy && (
-        <div className="card">
-          <h2>
-            {picked === today ? '오늘 할 일' : picked ? picked.replace(/-/g, '. ') : '날짜를 골라 주세요'}
-          </h2>
-          {pickedTasks.length === 0 ? (
-            <p className="sub" style={{ margin: 0 }}>
-              {total === 0
-                ? '아직 원장님이 올린 할 일이 없습니다. 올라오면 이 달력에 표시됩니다.'
-                : '이 날은 정해진 할 일이 없습니다. 쉬셔도 되고, 밀린 것을 하셔도 됩니다.'}
-            </p>
-          ) : (
-            pickedTasks.map((t) => {
-              const on = checked.includes(t.id);
-              return (
-                <button key={t.id} className={`todo ${on ? 'on' : ''}`} onClick={() => toggle(t.id)}>
-                  <span className="box">{on ? '✓' : ''}</span>
-                  <span className="txt">
-                    <b>{t.title}</b>
-                    {t.detail && <span className="d">{t.detail}</span>}
-                    {t.step != null && <span className="s">{t.step}차시</span>}
-                  </span>
-                </button>
-              );
-            })
-          )}
+      {/* ── 날짜를 누르면 뜨는 창 ── */}
+      {popup && (
+        <div className="pop-bg" onClick={() => setPopup('')}>
+          <div className="pop" onClick={(e) => e.stopPropagation()}>
+            <div className="pop-head">
+              <b>{popup.replace(/-/g, '. ')}</b>
+              <button className="pop-x" onClick={() => setPopup('')}>
+                ✕
+              </button>
+            </div>
+
+            <div className="pop-body">
+              {popupList.map((t) => {
+                if (t.step === MEMO) {
+                  return (
+                    <div className="memo" key={t.id}>
+                      <span className="tag">전달사항</span>
+                      <b>{t.title}</b>
+                      {t.detail && <p>{t.detail}</p>}
+                    </div>
+                  );
+                }
+                const on = checked.includes(t.id);
+                const course = COURSE.find((c) => c.no === t.step);
+                return (
+                  <div key={t.id}>
+                    <button className={`todo ${on ? 'on' : ''}`} onClick={() => toggle(t.id)}>
+                      <span className="box">{on ? '✓' : ''}</span>
+                      <span className="txt">
+                        <b>{t.title}</b>
+                        {t.detail && <span className="d">{t.detail}</span>}
+                      </span>
+                    </button>
+
+                    {course && (
+                      <div className="linked">
+                        <div className="meta">
+                          ▸ 이 날 만드실 서류: <b>{course.title}</b>
+                          <br />
+                          {course.desc}
+                        </div>
+                        {course.href ? (
+                          <a className="btn btn-gold btn-sm" href={course.href}>
+                            {course.no}차시 하러 가기 →
+                          </a>
+                        ) : (
+                          <span className="badge off">준비 중</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pop-foot">
+              <button className="btn btn-ghost" onClick={() => setPopup('')}>
+                닫기
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

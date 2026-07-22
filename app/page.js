@@ -97,37 +97,37 @@ export default function Home() {
           </div>
         )}
 
-        {/* ② 차시 목록 */}
-        <h2 className="section">차시 목록</h2>
-        <div className="card">
-          <p className="sub">
-            만든 자료는 차시마다 <b>한글 파일로 내려받아</b> 원장님 컴퓨터에 보관하세요.
+        {/* ② 차시 (작게 나열) */}
+        <div className="card chips-card">
+          <p className="sub" style={{ margin: '0 0 12px' }}>
+            차시 · 끝낸 곳은 ✓ 로 표시됩니다. 눌러서 바로 갈 수 있습니다.
           </p>
-
-          {COURSE.map((c) => {
-            const finished = !!done[String(c.no)];
-            const soon = !c.href;
-            const inner = (
-              <>
-                <div>
-                  <span className="no">{c.no}</span>
-                  <span className="name">{c.title}</span>
-                  {finished && <span className="badge ok">완료</span>}
-                  {soon && <span className="badge off">준비 중</span>}
-                </div>
-                <div className="meta">{c.desc}</div>
-              </>
-            );
-            return soon ? (
-              <div className="item dim" key={c.no}>
-                {inner}
-              </div>
-            ) : (
-              <a className="item link" key={c.no} href={c.href}>
-                {inner}
-              </a>
-            );
-          })}
+          <div className="chips">
+            {COURSE.map((c) => {
+              const finished = !!done[String(c.no)];
+              const soon = !c.href;
+              const label = (
+                <>
+                  <b>{finished ? '✓' : c.no}</b>
+                  <span>{c.title}</span>
+                </>
+              );
+              return soon ? (
+                <span className="chip off" key={c.no} title={c.desc}>
+                  {label}
+                </span>
+              ) : (
+                <a
+                  className={`chip${finished ? ' done' : ''}`}
+                  key={c.no}
+                  href={c.href}
+                  title={c.desc}
+                >
+                  {label}
+                </a>
+              );
+            })}
+          </div>
         </div>
 
         {/* ③ 문서 샘플 안내 */}
@@ -139,11 +139,8 @@ export default function Home() {
         <div className="card welcome">
           <h2>달력 쓰는 법</h2>
           <p>
-            라지숙 소장이 <b>날짜별로 할 일</b>을 올려 드립니다.
-            <br />① 날짜를 눌러 그날 할 일을 봅니다 · ② 다 하셨으면 <b>할 일을 눌러 체크</b>합니다 ·
-            ③ 체크한 날은 달력에 <b>✓</b> 가 붙습니다.
-            <br />
-            숫자가 붙은 날은 그날 할 일이 몇 개인지 뜻합니다.
+            <b>숫자가 붙은 날을 누르면</b> 그날 할 일과 <b>만드실 서류 안내</b>가 뜹니다. 다
+            하셨으면 눌러서 체크하시면 됩니다. 체크한 날은 <b>✓</b> 로 바뀝니다.
           </p>
         </div>
         <CalendarBoard phone={me.phone} />

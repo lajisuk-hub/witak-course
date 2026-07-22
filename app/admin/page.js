@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_SECTIONS } from '@/lib/sampleSections';
 import { loadSections, saveSections } from '@/lib/store';
 import { MARKER_GUIDE } from '@/lib/markers';
+import { MEMO } from '@/app/CalendarBoard';
 
 const PW_KEY = 'witak-admin-pw';
 
@@ -26,6 +27,8 @@ export default function Admin() {
 
   // 새 할 일
   const [form, setForm] = useState({ due_date: '', title: '', detail: '', step: '' });
+  // 새 메모·전달사항 (step = -1 로 저장한다)
+  const [memo, setMemo] = useState({ due_date: '', title: '', detail: '' });
 
   // 문서 항목 (이 컴퓨터에만 저장)
   const [list, setList] = useState(DEFAULT_SECTIONS);
@@ -90,8 +93,32 @@ export default function Admin() {
       setPw(saved);
       enter(saved);
     }
-    setForm((f) => ({ ...f, due_date: ymd(new Date()) }));
+    const t = ymd(new Date());
+    setForm((f) => ({ ...f, due_date: t }));
+    setMemo((m) => ({ ...m, due_date: t }));
   }, []);
+
+  async function addMemo() {
+    setError('');
+    setBusy(true);
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pw': pw },
+        body: JSON.stringify({ ...memo, step: MEMO }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '올리지 못했습니다');
+      setMemo({ due_date: memo.due_date, title: '', detail: '' });
+      await load(pw);
+      setMsg('메모를 올렸습니다');
+      setTimeout(() => setMsg(''), 1800);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function load(pwd) {
     const res = await fetch('/api/admin', { headers: { 'x-admin-pw': pwd } });
@@ -208,8 +235,9 @@ export default function Admin() {
     );
   }
 
+  const todos = tasks.filter((t) => t.step !== MEMO);
   const doneCount = (phone) => checks.filter((c) => c.phone === phone).length;
-  const pct = (phone) => (tasks.length ? Math.round((doneCount(phone) / tasks.length) * 100) : 0);
+  const pct = (phone) => (todos.length ? Math.round((doneCount(phone) / todos.length) * 100) : 0);
 
   return (
     <>
@@ -294,6 +322,47 @@ export default function Admin() {
             </div>
 
             <div className="card">
+              <h2>메모 · 전달사항 올리기</h2>
+              <p className="sub">
+                강의 내용, 공지, 준비물처럼 <b>체크가 필요 없는 안내</b>입니다. 수강생이 그 날짜를
+                누르면 안내로 보입니다.
+              </p>
+
+              <label>날짜</label>
+              <input
+                type="date"
+                value={memo.due_date}
+                onChange={(e) => setMemo({ ...memo, due_date: e.target.value })}
+              />
+
+              <label>제목</label>
+              <input
+                type="text"
+                value={memo.title}
+                onChange={(e) => setMemo({ ...memo, title: e.target.value })}
+                placeholder="예) 3회차 강의 — 예산서 작성 실습"
+              />
+
+              <label>내용</label>
+              <textarea
+                value={memo.detail}
+                onChange={(e) => setMemo({ ...memo, detail: e.target.value })}
+                placeholder={'예) 오늘 강의에서 다룬 것\n· 세입 항목 잡는 법\n· 정원 45명 기준 산출 근거\n다음 시간까지 반별 구성 정해 오세요'}
+                style={{ minHeight: 110 }}
+              />
+
+              <div className="row right" style={{ marginTop: 12 }}>
+                <button
+                  className="btn"
+                  onClick={addMemo}
+                  disabled={busy || !memo.due_date || !memo.title.trim()}
+                >
+                  메모 올리기
+                </button>
+              </div>
+            </div>
+
+            <div className="card">
               <h2>올린 할 일 ({tasks.length}개)</h2>
               {tasks.length === 0 ? (
                 <p className="sub" style={{ margin: 0 }}>아직 올린 할 일이 없습니다.</p>
@@ -306,8 +375,14 @@ export default function Admin() {
                         <div>
                           <span className="week">{t.due_date.slice(5).replace('-', '/')}</span>
                           <span className="name">{t.title}</span>
-                          {t.step != null && <span className="badge off">{t.step}차시</span>}
-                          <span className="badge ok">{n}명 완료</span>
+                          {t.step === MEMO ? (
+                            <span className="badge mine">전달사항</span>
+                          ) : (
+                            <>
+                              {t.step != null && <span className="badge off">{t.step}차시</span>}
+                              <span className="badge ok">{n}명 완료</span>
+                            </>
+                          )}
                         </div>
                         <button className="btn btn-ghost btn-sm" onClick={() => del(t.id)}>
                           지우기
@@ -356,7 +431,7 @@ export default function Admin() {
                   </div>
                   <div className="meter" style={{ margin: '8px 0 0' }}>
                     <b>
-                      {doneCount(s.phone)} / {tasks.length}
+                      {doneCount(s.phone)} / {todos.length}
                     </b>
                     <div className="bar">
                       <i style={{ width: `${pct(s.phone)}%` }} />
