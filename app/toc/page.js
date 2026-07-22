@@ -9,7 +9,7 @@ import { loadWritten, writtenSteps } from '@/lib/written';
 import { useMe } from '@/lib/auth';
 import { DEFAULT_SETTING, FONTS, describeSetting, isEmptySetting } from '@/lib/docSetting';
 
-const STEPS = ['1. 기본 정보', '2. 공고문 올리기', '3. 목차 확인', '4. 내 문서 뼈대'];
+const STEPS = ['1. 기본 정보', '2. 공고문 목차 올리기', '3. 목차 확인·수정', '4. 문서에 반영'];
 
 export default function Home() {
   const { me, ready: authed } = useMe();
@@ -29,6 +29,7 @@ export default function Home() {
   const [items, setItems] = useState([]); // [{name, matchId}]
   const [myDone, setMyDone] = useState([]); // 내가 직접 쓴 차시 번호
   const [setting, setSetting] = useState(DEFAULT_SETTING); // 지자체가 정한 문서 설정
+  const [showUnused, setShowUnused] = useState(false);
   const fileRef = useRef(null);
 
   // 저장된 내용 불러오기
@@ -202,9 +203,10 @@ export default function Home() {
         {/* 2단계 ─ 공고문 */}
         {step === 1 && (
           <div className="card">
-            <h2>우리 지자체 공고문 올리기</h2>
+            <h2>공고문의 목차를 PDF로 올려 주세요</h2>
             <p className="sub">
-              공고문을 올리면 AI가 <b>제출서류 목차</b>를 찾아 드립니다.
+              우리 지자체 공고문에서 <b>제출서류 목차가 들어 있는 부분</b>을 올려 주시면, 그 안의
+              목차를 찾아 정리해 드립니다. 공고문 전체를 올리셔도 됩니다.
             </p>
 
             <div className="drop">
@@ -264,9 +266,12 @@ export default function Home() {
         {/* 3단계 ─ 목차 확인 */}
         {step === 2 && (
           <div className="card">
-            <h2>목차 확인하기</h2>
+            <h2>이렇게 정리했습니다 · 맞는지 봐주세요</h2>
             <p className="sub">
-              AI가 뽑은 목차입니다. <b>틀린 곳은 고치고</b>, 순서도 바꿀 수 있습니다.
+              공고문에서 찾은 <b>제출서류 목차</b>입니다. 틀린 곳은 고치고, 빠진 것은 더하고,
+              순서도 바꾸실 수 있습니다.
+              <br />
+              다 확인하셨으면 맨 아래 <b>문서에 반영하기</b>를 눌러 주세요.
             </p>
 
             {items.map((it, i) => (
@@ -384,8 +389,16 @@ export default function Home() {
               <button className="btn btn-ghost" onClick={() => setStep(1)}>
                 이전
               </button>
-              <button className="btn" onClick={() => setStep(3)} disabled={!items.length}>
-                이대로 문서 뼈대 만들기
+              <button
+                className="btn btn-gold"
+                onClick={() => {
+                  markDone(0);
+                  setStep(3);
+                  window.scrollTo({ top: 0 });
+                }}
+                disabled={!items.length}
+              >
+                문서에 반영하기 →
               </button>
             </div>
           </div>
@@ -394,19 +407,26 @@ export default function Home() {
         {/* 4단계 ─ 문서 뼈대 */}
         {step === 3 && (
           <>
-            <div className="card welcome">
-              <h2>이 화면이 무엇인가요?</h2>
+            <div className="card done-card">
+              <h2>반영했습니다</h2>
               <p>
-                {city || '우리 지자체'} 공고문에서 뽑아낸 <b>제출서류 목록</b>입니다. 지자체마다
-                순서와 이름이 다른데, 여기 나온 <b>이 순서 그대로</b> 서류를 만들어 내시면 됩니다.
+                원장님 <b>문서 샘플</b>을 {city || '우리 지자체'} 목차 순서(<b>{items.length}가지</b>)
+                대로 다시 정리했습니다.
                 <br />
-                아래 <b>한글 파일 내려받기</b>를 누르면, 이 순서대로 짜인 서류 한 부가 통째로
-                만들어집니다.
+                이제 <b>차시를 진행하시면 그 내용이 이 문서의 제자리에 채워집니다.</b>
               </p>
+              <div className="row" style={{ marginTop: 14 }}>
+                <a className="btn btn-gold" href="/step1">
+                  1차시 자기소개서 하러 가기 →
+                </a>
+                <a className="btn btn-ghost" href="/">
+                  차시 목록으로
+                </a>
+              </div>
             </div>
 
             <div className="card">
-              <h2>제출서류 {items.length}가지 · {city || '우리 지자체'} 순서</h2>
+              <h2>정리된 제출서류 {items.length}가지</h2>
               <p className="sub">항목마다 붙은 표시의 뜻입니다.</p>
               <div className="legend">
                 <span>
@@ -462,18 +482,31 @@ export default function Home() {
             </div>
 
             {unused.length > 0 && (
-              <div className="card noprint">
-                <h2>이번에는 안 내셔도 되는 서류</h2>
-                <p className="sub">
-                  원장님 샘플에는 있지만 <b>{city || '우리 지자체'} 공고문에는 없는</b> 것들입니다.
-                  그래서 이번 서류에는 넣지 않았습니다. 넣어야 한다고 생각되시면 위 <b>목차 다시
-                  고치기</b>에서 추가하세요.
-                </p>
-                <ul className="unused">
-                  {unused.map((s) => (
-                    <li key={s.id}>· {s.name}</li>
-                  ))}
-                </ul>
+              <div className="card noprint" style={{ padding: 16 }}>
+                <div
+                  className="row"
+                  style={{ cursor: 'pointer', justifyContent: 'space-between' }}
+                  onClick={() => setShowUnused(!showUnused)}
+                >
+                  <b style={{ color: 'var(--navy)' }}>
+                    이번에는 안 내셔도 되는 서류 {unused.length}가지
+                  </b>
+                  <span style={{ color: 'var(--muted)' }}>{showUnused ? '▲' : '▼'}</span>
+                </div>
+                {showUnused && (
+                  <>
+                    <p className="sub" style={{ margin: '12px 0 8px' }}>
+                      원장님 샘플에는 있지만 <b>{city || '우리 지자체'} 공고문에는 없는</b>
+                      것들이라 넣지 않았습니다. 넣어야 한다면 <b>목차 다시 고치기</b>에서
+                      추가하세요.
+                    </p>
+                    <ul className="unused">
+                      {unused.map((s) => (
+                        <li key={s.id}>· {s.name}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </div>
             )}
 

@@ -543,3 +543,9 @@ code.mark {
 }
 .memo b { display: block; font-size: 15px; }
 .memo p { margin: 4px 0 0; font-size: 14px; color: var(--muted); line-height: 1.7; white-space: pre-wrap; }
+
+/* 반영 완료 카드 */
+.done-card { border-color: var(--ok); background: #eef5f1; }
+.done-card h2 { color: var(--ok); }
+.done-card h2::before { content: '✓ '; }
+.done-card p { margin: 0; font-size: 14.5px; line-height: 1.8; }
