@@ -40,9 +40,11 @@ export async function POST(req) {
     // ── 2단계: 다 올라왔으니 제자리로 옮긴다 ──
     if (body.finalize) {
       const temp = String(body.finalize);
-      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
-      // 예전 것은 보관해 둔다 (되돌릴 수 있게). 없으면 실패해도 그냥 넘어간다.
-      await storage('/object/move', {
+      // 초·밀리초까지 넣어 이름이 겹치지 않게 한다 (같은 분에 두 번 올려도 괜찮게)
+      const stamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 17);
+
+      // ① 예전 것을 보관함으로 복사해 둔다 (되돌릴 수 있게)
+      await storage('/object/copy', {
         method: 'POST',
         body: JSON.stringify({
           bucketId: BUCKET,
@@ -51,6 +53,13 @@ export async function POST(req) {
         }),
       });
 
+      // ② 제자리를 확실히 비운다. 이걸 해야 새 파일이 들어갈 수 있다.
+      await storage(`/object/${BUCKET}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ prefixes: [final] }),
+      });
+
+      // ③ 새 파일을 제자리로
       const mv = await storage('/object/move', {
         method: 'POST',
         body: JSON.stringify({ bucketId: BUCKET, sourceKey: temp, destinationKey: final }),
