@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { loadAll, markDone } from '@/lib/store';
-import { CONTACT_LINE } from '@/lib/course';
+import ContactBar from '@/app/ContactBar';
 import { useMe } from '@/lib/auth';
 
 // 시작 인터뷰를 마친 뒤, 안내를 한 번 더 보여 드리고
@@ -79,9 +79,7 @@ export default function Guide() {
           </ul>
         </div>
 
-        <div className="card contact">
-          <p>{CONTACT_LINE}</p>
-        </div>
+        <ContactBar />
 
         <div className="foot-nav">
           <a className="btn btn-ghost" href="/start">

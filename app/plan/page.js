@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useMe } from '@/lib/auth';
-import { CONTACT_LINE } from '@/lib/course';
+import ContactBar from '@/app/ContactBar';
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -206,9 +206,7 @@ export default function Plan() {
           </div>
         )}
 
-        <div className="card contact">
-          <p>{CONTACT_LINE}</p>
-        </div>
+        <ContactBar />
       </div>
     </>
   );

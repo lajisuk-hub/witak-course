@@ -348,6 +348,19 @@ h3.mini { font-size: 15px; color: var(--navy); margin: 20px 0 8px; }
   font-weight: 700;
   line-height: 1.6;
 }
+.contact .kakao {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: #fee500;
+  color: #3c1e1e;
+  font-size: 14px;
+  font-weight: 700;
+}
+.contact.link { display: block; text-decoration: none; cursor: pointer; transition: background 0.15s; }
+.contact.link:hover { background: #234a73; }
+.contact.link:hover .kakao { background: #ffe94d; }
 
 /* 달력 */
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }

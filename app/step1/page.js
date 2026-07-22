@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { loadAll, patch, markDone } from '@/lib/store';
-import { CONTACT_LINE } from '@/lib/course';
+import ContactBar from '@/app/ContactBar';
 import { buildDocHwpx, downloadBlob } from '@/lib/hwpx';
 import { useMe } from '@/lib/auth';
 
@@ -446,9 +446,7 @@ export default function Step1() {
               </div>
             </div>
 
-            <div className="card contact noprint">
-              <p>{CONTACT_LINE}</p>
-            </div>
+            <ContactBar />
 
             <div className="foot-nav noprint">
               <button className="btn btn-ghost" onClick={() => setPhase(0)}>
