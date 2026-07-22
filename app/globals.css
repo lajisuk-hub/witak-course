@@ -558,3 +558,30 @@ code.mark {
   font-weight: 700;
 }
 .chip.first b { background: var(--gold); }
+
+/* 진행 방법 번호 목록 */
+ol.steps-list { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+ol.steps-list li {
+  counter-increment: step;
+  position: relative;
+  padding: 12px 14px 12px 44px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  background: #f7f6f2;
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+ol.steps-list li::before {
+  content: counter(step);
+  position: absolute; left: 12px; top: 12px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--navy); color: #fff;
+  font-size: 12.5px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* 유출 금지 안내 */
+.notice { border-color: #c0392b; background: #fdecec; }
+.notice h2 { color: #c0392b; }
+.notice h2::before { content: '⚠ '; }
+.notice p { margin: 0; font-size: 14.5px; line-height: 1.8; }
