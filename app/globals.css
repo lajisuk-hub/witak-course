@@ -348,13 +348,19 @@ h3.mini { font-size: 15px; color: var(--navy); margin: 20px 0 8px; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .cal-head b { font-size: 17px; color: var(--navy); }
 
-.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 16px; }
+.cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 16px;
+}
 .cal-dow { text-align: center; font-size: 12.5px; font-weight: 700; color: var(--muted); padding: 4px 0; }
 .cal-dow.sun { color: #c0392b; }
 
 .cal-cell {
   position: relative;
-  aspect-ratio: 1 / 1;
+  min-width: 0;
+  height: 62px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: #fff;
@@ -366,8 +372,10 @@ h3.mini { font-size: 15px; color: var(--navy); margin: 20px 0 8px; }
   justify-content: center;
   gap: 3px;
   padding: 0;
+  margin: 0;
 }
 .cal-cell.empty { border: none; background: none; cursor: default; }
+@media (max-width: 520px) { .cal-cell { height: 48px; } .cal { gap: 4px; } }
 .cal-cell .num { font-size: 14px; color: var(--text); }
 .cal-cell .num.sun { color: #c0392b; }
 .cal-cell .dot {

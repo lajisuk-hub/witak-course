@@ -99,7 +99,7 @@ export default function Start() {
       <div className="head">
         <h1>시작하기 · 나를 알아보는 인터뷰</h1>
         <p>먼저 몇 가지만 여쭙고, 원장님께 맞는 공부 계획을 짜 드립니다</p>
-        <a href="/">← 차시 목록으로</a>
+        {phase === 2 && <a href="/">← 차시 목록으로</a>}
       </div>
 
       <div className="wrap">
@@ -161,9 +161,7 @@ export default function Start() {
             </div>
 
             <div className="foot-nav">
-              <a className="btn btn-ghost" href="/">
-                나중에 하기
-              </a>
+              <span />
               <button className="btn" onClick={() => setPhase(1)} disabled={!profileOk}>
                 다음
               </button>
@@ -270,8 +268,8 @@ export default function Start() {
               <button className="btn btn-ghost" onClick={() => setPhase(1)}>
                 답변 고치기
               </button>
-              <a className="btn btn-gold" href="/step1">
-                1차시 자기소개서 시작하기 →
+              <a className="btn btn-gold" href="/guide">
+                첫 인터뷰를 작성하였습니다 · 다음으로 이동 →
               </a>
             </div>
             <div className="row right noprint" style={{ marginTop: 10 }}>

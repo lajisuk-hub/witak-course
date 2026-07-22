@@ -10,12 +10,25 @@ export default function Home() {
   const [done, setDone] = useState({});
   const [plan, setPlan] = useState(null); // { total, doneCount, todayTasks }
 
+  const [checkedStart, setCheckedStart] = useState(false);
+
+  // 첫 인터뷰는 언제나 맨 처음에. 마치기 전에는 다른 화면을 보여 드리지 않는다.
   useEffect(() => {
-    setDone(loadAll().done || {});
+    const d = loadAll().done || {};
+    if (!d.start) {
+      window.location.replace('/start');
+      return;
+    }
+    if (!d.guide) {
+      window.location.replace('/guide');
+      return;
+    }
+    setDone(d);
+    setCheckedStart(true);
   }, []);
 
   useEffect(() => {
-    if (!ready || !me) return;
+    if (!ready || !me || !checkedStart) return;
     (async () => {
       try {
         const res = await fetch(`/api/plan?phone=${encodeURIComponent(me.phone)}`);
@@ -34,11 +47,9 @@ export default function Home() {
         /* 달력은 못 불러와도 나머지는 쓸 수 있게 둔다 */
       }
     })();
-  }, [ready, me]);
+  }, [ready, me, checkedStart]);
 
-  if (!ready || !me) return null;
-
-  const started = !!done.start;
+  if (!ready || !me || !checkedStart) return null;
 
   return (
     <>
@@ -51,7 +62,7 @@ export default function Home() {
       </div>
 
       <div className="wrap">
-        {/* 오늘 할 일 */}
+        {/* 일정이 맨 먼저 */}
         <a className="card plan-card" href="/plan">
           <h2>
             오늘 할 일
@@ -62,10 +73,10 @@ export default function Home() {
             )}
           </h2>
           {!plan ? (
-            <p className="sub" style={{ margin: 0 }}>달력을 불러오는 중입니다...</p>
+            <p className="sub" style={{ margin: 0 }}>일정을 불러오는 중입니다...</p>
           ) : plan.todayTasks.length === 0 ? (
             <p className="sub" style={{ margin: 0 }}>
-              오늘 정해진 할 일은 없습니다. 달력에서 이번 달 계획을 보실 수 있습니다. →
+              오늘 정해진 할 일은 없습니다. 눌러서 이번 달 일정을 보세요 →
             </p>
           ) : (
             <>
@@ -77,29 +88,31 @@ export default function Home() {
               <p className="sub" style={{ margin: 0 }}>눌러서 달력으로 가기 →</p>
             </>
           )}
+          {plan && plan.total > 0 && (
+            <div className="meter" style={{ margin: '12px 0 0' }}>
+              <span>전체 진도</span>
+              <b>
+                {plan.doneCount} / {plan.total}
+              </b>
+              <div className="bar">
+                <i style={{ width: `${Math.round((plan.doneCount / plan.total) * 100)}%` }} />
+              </div>
+            </div>
+          )}
         </a>
 
-        {/* 시작 인터뷰 */}
-        {!started ? (
-          <div className="card start-card">
-            <h2>먼저 여기부터 시작해 주세요</h2>
-            <p className="sub">
-              간단한 인터뷰로 원장님의 강점과 보완할 점을 살펴보고,
-              <b> 한 달 공부 계획</b>을 짜 드립니다. 5분이면 됩니다.
-            </p>
-            <a className="btn btn-gold" href="/start">
-              시작 인터뷰 하기
-            </a>
-          </div>
-        ) : (
-          <div className="card start-card">
-            <h2>{me.name} 원장님, 반갑습니다</h2>
-            <p className="sub">시작 인터뷰를 마치셨습니다. 아래 차시를 순서대로 진행하세요.</p>
-            <a className="btn btn-ghost btn-sm" href="/start">
+        <div className="card start-card">
+          <h2>{me.name} 원장님, 반갑습니다</h2>
+          <p className="sub">아래 차시를 순서대로 진행하세요.</p>
+          <div className="row">
+            <a className="btn btn-ghost btn-sm" href="/guide">
               내 공부 계획 다시 보기
             </a>
+            <a className="btn btn-ghost btn-sm" href="/start">
+              첫 인터뷰 내용 보기
+            </a>
           </div>
-        )}
+        </div>
 
         <div className="card">
           <h2>차시 목록</h2>
