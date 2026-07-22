@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_SECTIONS } from '@/lib/sampleSections';
 import { loadSections, saveSections } from '@/lib/store';
-import { MARKER_GUIDE } from '@/lib/markers';
+import { FORMS } from '@/lib/forms';
 import { MEMO } from '@/app/CalendarBoard';
 
 const PW_KEY = 'witak-admin-pw';
@@ -34,15 +34,34 @@ export default function Admin() {
   const [list, setList] = useState(DEFAULT_SECTIONS);
   const [open, setOpen] = useState(null);
 
-  // 문서 샘플 올리기
+  // 문서별 샘플 올리기
   const sampleRef = useRef(null);
+  const [upKind, setUpKind] = useState(null); // 지금 올리는 문서 종류
   const [upBusy, setUpBusy] = useState('');
   const [upDone, setUpDone] = useState('');
+  const [formFiles, setFormFiles] = useState({}); // 올라와 있는 서식 목록
+
+  async function loadForms(pwd = pw) {
+    try {
+      const res = await fetch('/api/sample-upload', { headers: { 'x-admin-pw': pwd } });
+      const data = await res.json();
+      if (res.ok) setFormFiles(data.files || {});
+    } catch {
+      /* 목록은 못 불러와도 올리기는 된다 */
+    }
+  }
+
+  function pickFile(kind) {
+    setUpKind(kind);
+    setUpDone('');
+    setError('');
+    setTimeout(() => sampleRef.current?.click(), 0);
+  }
 
   async function uploadSample(e) {
     const f = e.target.files?.[0];
     if (e.target) e.target.value = '';
-    if (!f) return;
+    if (!f || !upKind) return;
     if (!f.name.toLowerCase().endsWith('.hwpx')) {
       setError('한글 문서(.hwpx) 파일만 올릴 수 있습니다.');
       return;
@@ -54,12 +73,13 @@ export default function Admin() {
       const ticket = await fetch('/api/sample-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-pw': pw },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ kind: upKind }),
       });
       const info = await ticket.json();
       if (!ticket.ok) throw new Error(info.error || '올리기 표를 받지 못했습니다');
 
-      setUpBusy(`올리는 중입니다... (${Math.round(f.size / 1024 / 1024)}MB, 1~2분 걸립니다)`);
+      const mb = Math.max(1, Math.round(f.size / 1024 / 1024));
+      setUpBusy(`올리는 중입니다... (${mb}MB)`);
       const put = await fetch(info.url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/octet-stream' },
@@ -71,18 +91,19 @@ export default function Admin() {
       const fin = await fetch('/api/sample-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-pw': pw },
-        body: JSON.stringify({ finalize: info.temp }),
+        body: JSON.stringify({ kind: upKind, finalize: info.temp }),
       });
       const finData = await fin.json();
       if (!fin.ok) throw new Error(finData.error || '마무리하지 못했습니다');
 
-      setUpDone(
-        `올렸습니다. (${f.name}, ${Math.round(f.size / 1024 / 1024)}MB) 예전 샘플은 이전샘플 폴더에 보관했습니다.`
-      );
+      const name = (FORMS.find((x) => x.key === upKind) || {}).name || '';
+      setUpDone(`${name} 서식을 올렸습니다. (${f.name})`);
+      await loadForms();
     } catch (err) {
       setError(err.message);
     } finally {
       setUpBusy('');
+      setUpKind(null);
     }
   }
 
@@ -134,6 +155,7 @@ export default function Admin() {
     setBusy(true);
     try {
       await load(pwd);
+      await loadForms(pwd);
       sessionStorage.setItem(PW_KEY, pwd);
       setOk(true);
     } catch (e) {
@@ -448,86 +470,96 @@ export default function Admin() {
         {tab === 'sample' && (
           <>
             <div className="card welcome">
-              <h2>수강생 서류의 뼈대가 되는 문서입니다</h2>
+              <h2>문서마다 서식을 따로 올려 주세요</h2>
               <p>
-                여기 올리신 한글 문서(.hwpx)를 바탕으로, 수강생마다 자기 지자체 목차 순서에 맞춰
-                서류가 만들어집니다. 수강생이 차시에서 쓴 내용도 이 문서의 해당 자리에 들어갑니다.
+                여기 올리신 한글 문서의 <b>글꼴 · 글자크기 · 줄간격 · 여백</b>을 그대로 물려받아,
+                수강생 화면에서 <b>그 문서 하나만</b> 만들어 드립니다.
+                <br />
+                예) 자기소개서 서식을 올리시면 → 수강생이 쓴 자기소개서가 그 서식으로 나옵니다.
                 <br />
                 <b>로그인한 수강생만</b> 받을 수 있고, 주소를 알아도 밖에서는 열 수 없습니다.
               </p>
             </div>
 
+            {upBusy && (
+              <div className="info">
+                <span className="spin" style={{ borderColor: '#1a3a5c', borderTopColor: 'transparent' }} />
+                {upBusy}
+              </div>
+            )}
+            {upDone && <div className="info">{upDone}</div>}
+
             <div className="card">
-              <h2>샘플에 넣어 주실 자리 표시</h2>
+              <h2>문서 서식 목록</h2>
               <p className="sub">
-                각 항목이 <b>시작하는 곳</b>에 빈 줄을 하나 만들고, 그 줄에 아래 표시만 적어
-                주세요. 이 표시를 보고 앱이 &ldquo;여기가 자기소개서 자리&rdquo; 하고 알아냅니다.
+                한글에서 <b>다른 이름으로 저장 → 한글 문서(*.hwpx)</b> 로 저장한 파일을 올려
+                주세요. 다시 올리면 새 것으로 바뀌고, 예전 것은 보관됩니다.
               </p>
 
-              {MARKER_GUIDE.map((g) => (
-                <div className="item" key={g.mark}>
-                  <div>
-                    <code className="mark">{g.mark}</code>
-                    <span className="name" style={{ marginLeft: 10 }}>
-                      {g.what}
-                    </span>
-                    <span className="badge off">{g.step}차시</span>
+              {FORMS.map((f) => {
+                const up = formFiles[f.key];
+                return (
+                  <div className="item" key={f.key}>
+                    <div className="row" style={{ justifyContent: 'space-between' }}>
+                      <div>
+                        <span className="name">{f.name}</span>
+                        {f.step != null && <span className="badge off">{f.step}차시</span>}
+                        {up ? (
+                          <span className="badge ok">올림</span>
+                        ) : (
+                          <span className="badge new">아직 없음</span>
+                        )}
+                      </div>
+                      <button
+                        className={`btn btn-sm ${up ? 'btn-ghost' : 'btn-gold'}`}
+                        onClick={() => pickFile(f.key)}
+                        disabled={!!upBusy}
+                      >
+                        {up ? '바꾸기' : '올리기'}
+                      </button>
+                    </div>
+                    <div className="meta">
+                      {f.desc}
+                      {up && (
+                        <>
+                          <br />▸ 올린 날 {String(up.at).slice(0, 10)} · 크기{' '}
+                          {Math.max(1, Math.round(up.size / 1024))}KB
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
-              <div className="warn">
-                <b>지킬 것 세 가지</b>
-                <br />① 대괄호 <b>두 개씩</b>, 붙여서, 띄어쓰기 없이 — <code>[[자기소개서]]</code>
-                <br />② 그 줄에는 <b>표시만</b> 적기 (다른 글자 같이 넣지 않기)
-                <br />③ 표시한 줄부터 <b>다음 표시 전까지</b>가 그 항목입니다
-              </div>
-
-              <div className="info">
-                표시한 줄은 완성 문서에서 <b>자동으로 사라집니다.</b>
-                <br />
-                수강생이 그 차시를 <b>안 했으면</b> 원장님 샘플 내용이 그대로 남아 본보기가 되고,
-                <br />
-                <b>마쳤으면</b> 수강생이 쓴 내용으로 바뀝니다.
-              </div>
+              <input
+                ref={sampleRef}
+                type="file"
+                accept=".hwpx"
+                onChange={uploadSample}
+                style={{ display: 'none' }}
+              />
             </div>
 
             <div className="card">
-              <h2>새 문서 샘플 올리기</h2>
-              <p className="sub">
-                한글에서 <b>다른 이름으로 저장 → 한글 문서(*.hwpx)</b> 로 저장한 파일을 올려
-                주세요.
-              </p>
-
-              <div className="drop">
-                <p style={{ margin: '0 0 12px' }}>
-                  <strong>.hwpx</strong> 파일 (최대 50MB)
-                </p>
-                <button className="btn" onClick={() => sampleRef.current?.click()} disabled={!!upBusy}>
-                  파일 고르기
-                </button>
-                <input
-                  ref={sampleRef}
-                  type="file"
-                  accept=".hwpx"
-                  onChange={uploadSample}
-                  style={{ display: 'none' }}
-                />
-              </div>
-
-              {upBusy && (
-                <div className="info">
-                  <span className="spin" style={{ borderColor: '#1a3a5c', borderTopColor: 'transparent' }} />
-                  {upBusy}
-                </div>
-              )}
-              {upDone && <div className="info">{upDone}</div>}
-
-              <div className="warn">
-                <b>중요합니다.</b> 새 샘플을 올리시면 문서 내용이 바뀌기 때문에, 어느 부분이 어느
-                항목인지 <b>다시 나눠 주는 작업</b>이 한 번 필요합니다. 올리신 뒤 저(개발자)에게
-                알려 주세요. 그 작업 전까지 수강생에게는 <b>이전 샘플</b>이 나갑니다.
-              </div>
+              <h2>서식 만드실 때</h2>
+              <ul className="pts">
+                <li>
+                  그 문서 <b>하나만</b> 담아 주세요. (자기소개서 서식에는 자기소개서만)
+                </li>
+                <li>
+                  <b>본문 글꼴을 한 가지로 통일</b>해 주시면 결과가 깔끔합니다.
+                </li>
+                <li>
+                  제목은 본문보다 <b>큰 글씨</b>로 해주세요. 그걸 보고 제목 서식을 알아냅니다.
+                </li>
+                <li>
+                  내용은 <b>본보기로 채워 두셔도 됩니다.</b> 수강생 문서에는 수강생이 쓴 내용이
+                  들어갑니다.
+                </li>
+                <li>
+                  <b>전체 문서</b>는 과정을 마친 수강생이 각 문서를 모아 정리할 때 쓰는 서식입니다.
+                </li>
+              </ul>
             </div>
           </>
         )}

@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { loadAll, patch, markDone } from '@/lib/store';
 import ContactBar from '@/app/ContactBar';
-import { buildDocHwpx, downloadBlob } from '@/lib/hwpx';
-import { downloadMergedDoc } from '@/lib/mergedDoc';
+import { buildFormDoc, downloadBlob } from '@/lib/formDoc';
 import { useMe } from '@/lib/auth';
 
 // 질문 구성·문단 구조·문체 3종·목표 분량은
@@ -134,7 +133,6 @@ export default function Step1() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [tocReady, setTocReady] = useState(false);
-  const [mergeBusy, setMergeBusy] = useState('');
 
   useEffect(() => {
     if (!authed || !me) return;
@@ -209,21 +207,6 @@ export default function Step1() {
     setTimeout(() => setSaved(false), 2500);
   }
 
-  // 저장하고, 목차 + 지금까지 쓴 내용이 합쳐진 문서를 받는다
-  async function saveAndMerge() {
-    setError('');
-    patch({ introDraft: draft });
-    markDone(1);
-    setMergeBusy('내 문서를 만드는 중입니다... (1~2분 걸립니다. 창을 닫지 마세요)');
-    try {
-      await downloadMergedDoc(setMergeBusy);
-    } catch (e) {
-      setError('문서 만들기 실패: ' + e.message);
-    } finally {
-      setMergeBusy('');
-    }
-  }
-
   function fullText() {
     let t = `자기소개서\n${SUBTITLE}\n`;
     SECTIONS.forEach((s) => {
@@ -244,19 +227,21 @@ export default function Step1() {
     }
   }
 
+  // 자기소개서 문서 만들기 — 원장님이 올린 "자기소개서 서식"의 글꼴·여백을 그대로 쓴다
   async function download() {
     setError('');
-    setBusy('한글 파일을 만드는 중입니다...');
+    patch({ introDraft: draft });
+    setBusy('자기소개서 문서를 만드는 중입니다...');
     try {
+      const d = loadAll();
       const blocks = [
         { kind: 'title', text: '자 기 소 개 서' },
-        { kind: 'note', text: SUBTITLE },
         { kind: 'body', text: '' },
       ];
-      SECTIONS.forEach((s) => {
-        if (!draft[s.key]) return;
-        blocks.push({ kind: 'head', text: s.title });
-        blocks.push({ kind: 'body', text: draft[s.key] });
+      SECTIONS.forEach((sec) => {
+        if (!draft[sec.key]) return;
+        blocks.push({ kind: 'head', text: sec.title });
+        blocks.push({ kind: 'body', text: draft[sec.key] });
       });
       if (draft.closing) {
         blocks.push({ kind: 'body', text: '' });
@@ -265,13 +250,19 @@ export default function Step1() {
       blocks.push({ kind: 'body', text: '' });
       blocks.push({ kind: 'body', text: `지원자   ${form.name || ''}   (인)` });
 
-      const blob = await buildDocHwpx({ blocks, onProgress: setBusy });
-      const safe = (form.name || '지원자').replace(/[^\w가-힣]/g, '_');
-      downloadBlob(blob, `자기소개서_${safe}.hwpx`);
-      patch({ introDraft: draft });
+      const { blob, name } = await buildFormDoc({
+        kind: 'intro',
+        phone: me.phone,
+        blocks,
+        city: d.city,
+        student: form.name || me.name,
+        docName: '자기소개서',
+        onProgress: setBusy,
+      });
+      downloadBlob(blob, name);
       markDone(1);
     } catch (e) {
-      setError('한글 파일 만들기 실패: ' + e.message);
+      setError('자기소개서 문서 만들기 실패: ' + e.message);
     } finally {
       setBusy('');
     }
@@ -455,9 +446,6 @@ export default function Step1() {
                 <button className="btn btn-ghost" onClick={copy} disabled={!!busy}>
                   복사
                 </button>
-                <button className="btn btn-ghost" onClick={download} disabled={!!busy || !draft.para1}>
-                  자기소개서만 받기
-                </button>
                 <button className="btn btn-ghost" onClick={() => window.print()} disabled={!!busy}>
                   인쇄 / PDF
                 </button>
@@ -495,28 +483,19 @@ export default function Step1() {
             </div>
 
             <div className="card done-card noprint">
-              <h2>내 문서에 넣기</h2>
+              <h2>자기소개서 문서 받기</h2>
               <p>
-                이 자기소개서는 <b>목차까지 정해진 내 위탁 서류</b>의
-                {' '}<b>&lsquo;위탁 운영자 상세내역&rsquo;</b> 자리에 그대로 들어갑니다.
-                <br />
-                아래를 누르시면 <b>목차 + 자기소개서</b>가 합쳐진 문서 한 부를 받으실 수 있습니다.
+                라지숙 소장이 올려 주신 <b>자기소개서 서식</b>(글꼴·글자크기·줄간격·여백)에 맞춰
+                만들어 드립니다. 한글에서 열어 바로 쓰시면 됩니다.
               </p>
-
-              {mergeBusy && (
-                <div className="info">
-                  <span className="spin" style={{ borderColor: '#1a3a5c', borderTopColor: 'transparent' }} />
-                  {mergeBusy}
-                </div>
-              )}
 
               <div className="row" style={{ marginTop: 14 }}>
                 <button
                   className="btn btn-gold"
-                  onClick={saveAndMerge}
-                  disabled={!!busy || !!mergeBusy || !draft.para1}
+                  onClick={download}
+                  disabled={!!busy || !draft.para1}
                 >
-                  자기소개서까지 넣은 내 문서 받기
+                  자기소개서 한글파일 받기
                 </button>
                 <button
                   className="btn btn-ghost"
@@ -524,14 +503,14 @@ export default function Step1() {
                     save();
                     window.location.href = '/';
                   }}
-                  disabled={!!busy || !!mergeBusy}
+                  disabled={!!busy}
                 >
                   저장하고 메인으로 →
                 </button>
               </div>
               <p style={{ fontSize: 13, color: 'var(--muted)', margin: '10px 0 0' }}>
-                ※ 다음 차시(예산서)를 마치면 <b>목차 + 자기소개서 + 예산서</b>까지 합쳐진 문서가
-                나옵니다. 이렇게 쌓여서 마지막에 하나의 완성 문서가 됩니다.
+                ※ 받으신 파일은 <b>지역_이름_자기소개서.hwpx</b> 로 저장됩니다. 차시마다 이렇게
+                하나씩 모으시면, 마지막에 <b>전체 문서 서식</b>에 옮겨 담아 완성하시면 됩니다.
               </p>
             </div>
 

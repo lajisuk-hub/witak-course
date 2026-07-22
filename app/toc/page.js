@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { DEFAULT_SECTIONS, STEP_NAMES } from '@/lib/sampleSections';
+import { DEFAULT_SECTIONS } from '@/lib/sampleSections';
 import { loadAll, patch, loadSections, markDone } from '@/lib/store';
 import { readNoticeFile } from '@/lib/readFile';
-import { buildHwpx, downloadBlob } from '@/lib/hwpx';
-import { loadWritten, writtenSteps } from '@/lib/written';
+import { buildFormDoc, downloadBlob } from '@/lib/formDoc';
 import { useMe } from '@/lib/auth';
 import { DEFAULT_SETTING, FONTS, describeSetting, isEmptySetting } from '@/lib/docSetting';
 
@@ -37,7 +36,6 @@ export default function Home() {
     if (!authed || !me) return;
     const d = loadAll();
     setSections(loadSections(DEFAULT_SECTIONS));
-    setMyDone(writtenSteps());
     if (d.city) setCity(d.city);
     if (d.center) setCenter(d.center);
     setApplicant(d.applicant || me.name || '');
@@ -113,24 +111,29 @@ export default function Home() {
   const usedIds = new Set(items.map((it) => it.matchId).filter(Boolean));
   const unused = sections.filter((s) => !usedIds.has(s.id));
 
+  // 목차 문서 만들기 — 원장님이 올린 "목차 서식"의 글꼴·여백을 그대로 쓴다
   async function download() {
     setError('');
-    setBusy('한글 파일을 만드는 중입니다...');
+    setBusy('목차 문서를 만드는 중입니다...');
     try {
-      const blob = await buildHwpx({
+      const blocks = [
+        { kind: 'title', text: '목       차' },
+        { kind: 'body', text: '' },
+        ...items.map((it, i) => ({ kind: 'body', text: `${i + 1}.  ${it.name}` })),
+      ];
+      const { blob, name } = await buildFormDoc({
+        kind: 'toc',
+        phone: me.phone,
+        blocks,
         city,
-        center,
-        applicant,
-        items,
-        written: loadWritten(sections),
-        setting,
+        student: applicant || me.name,
+        docName: '목차',
         onProgress: setBusy,
       });
-      const safe = (city || '위탁') + '_위탁운영계획서_뼈대.hwpx';
-      downloadBlob(blob, safe);
+      downloadBlob(blob, name);
       markDone(0);
     } catch (e) {
-      setError('한글 파일 만들기 실패: ' + e.message);
+      setError('목차 문서 만들기 실패: ' + e.message);
     } finally {
       setBusy('');
     }
@@ -430,96 +433,25 @@ export default function Home() {
 
             <div className="card">
               <h2>정리된 제출서류 {items.length}가지</h2>
-              <p className="sub">항목마다 붙은 표시의 뜻입니다.</p>
-              <div className="legend">
-                <span>
-                  <b className="badge ok">샘플 있음</b> 원장님 샘플 서류가 그대로 들어갑니다. 내용만
-                  우리 어린이집에 맞게 고치면 됩니다.
-                </span>
-                <span>
-                  <b className="badge mine">내가 쓴 글</b> 차시에서 직접 쓰신 글이 이 자리에
-                  들어갑니다.
-                </span>
-                <span>
-                  <b className="badge new">직접 작성</b> 샘플에 없는 항목입니다. 빈칸으로 들어가니
-                  직접 쓰셔야 합니다.
-                </span>
-              </div>
+              <p className="sub">
+                아래 순서가 <b>{city || '우리 지자체'} 공고문이 요구하는 제출 순서</b>입니다.
+              </p>
 
-              {items.map((it, i) => {
-                const s = sectionById(it.matchId);
-                const mine = s && myDone.includes(s.step);
-                return (
-                  <div className="item" key={i}>
-                    <div>
-                      <span className="no">{i + 1}</span>
-                      <span className="name">{it.name}</span>
-                      {mine ? (
-                        <span className="badge mine">내가 쓴 글</span>
-                      ) : s ? (
-                        <span className="badge ok">샘플 있음</span>
-                      ) : (
-                        <span className="badge new">직접 작성</span>
-                      )}
-                    </div>
-                    <div className="meta">
-                      {!s ? (
-                        <>▸ 샘플에 없는 항목입니다. 빈칸으로 들어가니 직접 작성하세요.</>
-                      ) : mine ? (
-                        <>▸ {STEP_NAMES[s.step]}에서 쓰신 글이 이 자리에 들어갑니다.</>
-                      ) : (
-                        <>
-                          ▸ 원장님 샘플의 &lsquo;{s.name}&rsquo; 부분이 들어갑니다.
-                          {s.step && ` ${STEP_NAMES[s.step]}에서 다듬으시면 됩니다.`}
-                        </>
-                      )}
-                      {s?.guide && (
-                        <>
-                          <br />※ 주의할 점 — {s.guide}
-                        </>
-                      )}
-                    </div>
+              {items.map((it, i) => (
+                <div className="item" key={i}>
+                  <div>
+                    <span className="no">{i + 1}</span>
+                    <span className="name">{it.name}</span>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
 
-            {unused.length > 0 && (
-              <div className="card noprint" style={{ padding: 16 }}>
-                <div
-                  className="row"
-                  style={{ cursor: 'pointer', justifyContent: 'space-between' }}
-                  onClick={() => setShowUnused(!showUnused)}
-                >
-                  <b style={{ color: 'var(--navy)' }}>
-                    이번에는 안 내셔도 되는 서류 {unused.length}가지
-                  </b>
-                  <span style={{ color: 'var(--muted)' }}>{showUnused ? '▲' : '▼'}</span>
-                </div>
-                {showUnused && (
-                  <>
-                    <p className="sub" style={{ margin: '12px 0 8px' }}>
-                      원장님 샘플에는 있지만 <b>{city || '우리 지자체'} 공고문에는 없는</b>
-                      것들이라 넣지 않았습니다. 넣어야 한다면 <b>목차 다시 고치기</b>에서
-                      추가하세요.
-                    </p>
-                    <ul className="unused">
-                      {unused.map((s) => (
-                        <li key={s.id}>· {s.name}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            )}
-
             <div className="card noprint">
-              <h2>한글 파일로 받기</h2>
+              <h2>목차 문서 받기</h2>
               <p className="sub">
-                누르시면 <b>표지 · 목차 · 위 {items.length}가지 서류</b>가 한 부로 묶인 한글 파일이
-                만들어집니다. 한글에서 열어 내용만 채우시면 됩니다.
-                <br />
-                파일이 커서 <b>1~2분쯤</b> 걸립니다. 창을 닫지 말고 기다려 주세요.
+                라지숙 소장이 올려 주신 <b>목차 서식</b>(글꼴·여백)에 맞춰, 위 순서대로 정리된
+                <b> 목차 문서</b>를 만들어 드립니다.
               </p>
               <div className="info">
                 문서 설정: <b>{describeSetting(setting)}</b>
@@ -541,7 +473,7 @@ export default function Home() {
               )}
               <div className="row">
                 <button className="btn btn-gold" onClick={download} disabled={!!busy}>
-                  한글 파일(.hwpx) 내려받기
+                  목차 문서 내려받기
                 </button>
                 <button className="btn btn-ghost" onClick={() => window.print()}>
                   인쇄 / PDF로 저장
