@@ -201,6 +201,19 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--gold); outl
 .welcome h2 { margin-bottom: 10px; line-height: 1.5; }
 .welcome p { margin: 0; font-size: 14.5px; line-height: 1.8; color: var(--text); }
 
+/* 화면 안 큰 구분 제목 */
+h2.section {
+  margin: 26px 0 12px;
+  font-size: 17px;
+  color: var(--navy);
+  padding-left: 11px;
+  border-left: 4px solid var(--gold);
+}
+
+/* 나의 강점 카드 */
+.mine-card { border-color: var(--navy); background: #f7fafd; }
+.mine-card .pts li { background: #fff; }
+
 .plan-card {
   display: block; text-decoration: none; color: inherit;
   border-color: var(--navy); background: #f5f9fd;
