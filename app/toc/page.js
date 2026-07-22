@@ -318,12 +318,34 @@ export default function Home() {
         {/* 4단계 ─ 문서 뼈대 */}
         {step === 3 && (
           <>
-            <div className="card">
-              <h2>내 지자체 전용 문서 뼈대</h2>
-              <p className="sub">
-                {city || '우리 지자체'} 공고문 순서대로 정리했습니다. 아래 순서 그대로 서류를
-                만들면 됩니다.
+            <div className="card welcome">
+              <h2>이 화면이 무엇인가요?</h2>
+              <p>
+                {city || '우리 지자체'} 공고문에서 뽑아낸 <b>제출서류 목록</b>입니다. 지자체마다
+                순서와 이름이 다른데, 여기 나온 <b>이 순서 그대로</b> 서류를 만들어 내시면 됩니다.
+                <br />
+                아래 <b>한글 파일 내려받기</b>를 누르면, 이 순서대로 짜인 서류 한 부가 통째로
+                만들어집니다.
               </p>
+            </div>
+
+            <div className="card">
+              <h2>제출서류 {items.length}가지 · {city || '우리 지자체'} 순서</h2>
+              <p className="sub">항목마다 붙은 표시의 뜻입니다.</p>
+              <div className="legend">
+                <span>
+                  <b className="badge ok">샘플 있음</b> 원장님 샘플 서류가 그대로 들어갑니다. 내용만
+                  우리 어린이집에 맞게 고치면 됩니다.
+                </span>
+                <span>
+                  <b className="badge mine">내가 쓴 글</b> 차시에서 직접 쓰신 글이 이 자리에
+                  들어갑니다.
+                </span>
+                <span>
+                  <b className="badge new">직접 작성</b> 샘플에 없는 항목입니다. 빈칸으로 들어가니
+                  직접 쓰셔야 합니다.
+                </span>
+              </div>
 
               {items.map((it, i) => {
                 const s = sectionById(it.matchId);
@@ -341,19 +363,23 @@ export default function Home() {
                         <span className="badge new">직접 작성</span>
                       )}
                     </div>
-                    {s && (
-                      <div className="meta">
-                        {mine
-                          ? `▸ ${STEP_NAMES[s.step]}에서 쓰신 내용이 이 자리에 들어갑니다`
-                          : `▸ 샘플: ${s.name}`}
-                        {!mine && s.step && ` · ${STEP_NAMES[s.step]}에서 작성`}
-                        {s.guide && (
-                          <>
-                            <br />※ {s.guide}
-                          </>
-                        )}
-                      </div>
-                    )}
+                    <div className="meta">
+                      {!s ? (
+                        <>▸ 샘플에 없는 항목입니다. 빈칸으로 들어가니 직접 작성하세요.</>
+                      ) : mine ? (
+                        <>▸ {STEP_NAMES[s.step]}에서 쓰신 글이 이 자리에 들어갑니다.</>
+                      ) : (
+                        <>
+                          ▸ 원장님 샘플의 &lsquo;{s.name}&rsquo; 부분이 들어갑니다.
+                          {s.step && ` ${STEP_NAMES[s.step]}에서 다듬으시면 됩니다.`}
+                        </>
+                      )}
+                      {s?.guide && (
+                        <>
+                          <br />※ 주의할 점 — {s.guide}
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -361,10 +387,11 @@ export default function Home() {
 
             {unused.length > 0 && (
               <div className="card noprint">
-                <h2>이번 지자체에서는 안 쓰는 꼭지</h2>
+                <h2>이번에는 안 내셔도 되는 서류</h2>
                 <p className="sub">
-                  샘플에는 있지만 이번 공고문 목차에는 없는 것들입니다. 필요하면 3단계로 돌아가
-                  넣으세요.
+                  원장님 샘플에는 있지만 <b>{city || '우리 지자체'} 공고문에는 없는</b> 것들입니다.
+                  그래서 이번 서류에는 넣지 않았습니다. 넣어야 한다고 생각되시면 위 <b>목차 다시
+                  고치기</b>에서 추가하세요.
                 </p>
                 <ul className="unused">
                   {unused.map((s) => (
@@ -375,9 +402,12 @@ export default function Home() {
             )}
 
             <div className="card noprint">
-              <h2>내려받기</h2>
+              <h2>한글 파일로 받기</h2>
               <p className="sub">
-                한글 파일을 열면 목차와 각 꼭지가 이미 만들어져 있습니다. 내용만 채우시면 됩니다.
+                누르시면 <b>표지 · 목차 · 위 {items.length}가지 서류</b>가 한 부로 묶인 한글 파일이
+                만들어집니다. 한글에서 열어 내용만 채우시면 됩니다.
+                <br />
+                파일이 커서 <b>1~2분쯤</b> 걸립니다. 창을 닫지 말고 기다려 주세요.
               </p>
               {busy && (
                 <div className="info">

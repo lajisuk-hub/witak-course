@@ -184,6 +184,18 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--gold); outl
 
 .start-card { border-color: var(--gold); background: #fffdf7; }
 
+/* 표시 설명 */
+.legend { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.legend span {
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  background: #faf9f6;
+  border-radius: 9px;
+  padding: 9px 12px;
+}
+.legend .badge { margin: 0 6px 0 0; }
+
 /* 참여 인사말 */
 .welcome { border-color: var(--gold); background: #fffdf7; }
 .welcome h2 { margin-bottom: 10px; line-height: 1.5; }
