@@ -7,6 +7,7 @@ import { useMe, logout } from '@/lib/auth';
 import CalendarBoard from '@/app/CalendarBoard';
 import ContactBar from '@/app/ContactBar';
 import SampleCard from '@/app/SampleCard';
+import FinalCard from '@/app/FinalCard';
 
 export default function Home() {
   const { me, ready } = useMe();
@@ -176,7 +177,7 @@ export default function Home() {
 
         {/* ③ 문서 샘플 안내 */}
         <h2 className="section">우리 문서는 이렇게 쌓입니다</h2>
-        <SampleCard phone={me.phone} />
+        <SampleCard />
 
         {/* ④ 달력 일정 */}
         <h2 className="section">한 달 일정 달력</h2>
@@ -188,6 +189,9 @@ export default function Home() {
           </p>
         </div>
         <CalendarBoard phone={me.phone} />
+
+        {/* ⑤ 맨 마지막 단계 */}
+        <FinalCard phone={me.phone} />
 
         <ContactBar />
 
