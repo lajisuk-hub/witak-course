@@ -70,9 +70,12 @@ export default function Step3() {
           <p>
             ① 아래 화면에서 <b>키워드 → 연령 → 프로그램명 → 목표·활동</b> 순서대로 답하시면 12개월
             연간 계획표가 자동으로 만들어집니다.
-            <br />② 다 마치시면 그 화면 아래의 <b>Word(.docx) 다운로드</b>를 누르세요.
-            <br />③ 받은 워드파일을 <b>맨 아래 칸에 올리시면</b>, 원장님 서식에 목표·목적·연간표가
-            채워진 한글 파일이 만들어집니다.
+            <br />② 한 연령을 마치면 <b>[➕ 이 연령 저장하고 다른 연령 추가하기]</b>를 눌러 다음 연령을
+            이어서 만드세요. (0~1세 → 2세 → 3세 … 원하는 만큼)
+            <br />③ 연령을 다 담으셨으면 <b>[전체 연령 하나로 Word 저장]</b>을 누르세요. 담은 연령이
+            모두 든 워드 파일 <b>하나</b>가 받아집니다.
+            <br />④ 그 워드파일을 <b>맨 아래 칸에 올리시면</b>, 원장님 서식에 연령별 목표·목적·연간표가
+            차례대로 채워진 한글 파일 <b>하나</b>가 만들어집니다.
           </p>
         </div>
 
@@ -126,9 +129,9 @@ export default function Step3() {
             <div className="info">
               <b>{result.name}</b> 을 받았습니다.
               <br />
-              프로그램: <b>{result.programName}</b>
+              담긴 연령 프로그램 <b>{result.count}개</b>: {result.programNames.join(', ')}
               <br />
-              목표 {result.objectives}개 · 연간 계획표 {result.months}줄을 채웠습니다.
+              연간 계획표 합계 {result.totalMonths}줄을 채웠습니다.
             </div>
           )}
 

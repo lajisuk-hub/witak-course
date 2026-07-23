@@ -864,21 +864,28 @@
 
     <div id="annual-table-container"></div>
 
+    <div id="saved-banner" style="display:none; margin: 12px 0; padding: 12px 16px; background:#eef6ff; border:1px solid #b9d9f5; border-radius:10px; color:#1a3a5c; font-weight:600;"></div>
+
+    <div style="margin: 16px 0; padding: 16px; background:#fff8ec; border:1px dashed #e0b060; border-radius:12px;">
+      <p style="margin:0 0 10px; color:#6b4f3f; line-height:1.6;">다른 연령도 이어서 만드시겠어요? 아래 버튼을 누르면 <b>지금 연령이 저장되고</b> 처음 화면으로 돌아가 다음 연령을 만들 수 있어요. 여러 연령을 다 담은 뒤 <b>한 번에</b> 저장하시면 됩니다.</p>
+      <button class="btn btn-primary" style="width:100%;" onclick="saveAndAddMore()">➕ 이 연령 저장하고 다른 연령 추가하기</button>
+    </div>
+
     <div class="download-section">
-      <h3>📥 문서 다운로드</h3>
+      <h3>📥 다 만들었으면 여기서 저장</h3>
       <div class="download-buttons">
         <button class="btn-download btn-word" onclick="downloadWord()">
-          <span style="font-size: 18px;">📄</span> Word (.docx) 다운로드
+          <span style="font-size: 18px;">📄</span> 전체 연령 하나로 Word 저장
         </button>
         <button class="btn-download btn-ppt" onclick="downloadPPT()">
-          <span style="font-size: 18px;">📊</span> PowerPoint (.pptx) 다운로드
+          <span style="font-size: 18px;">📊</span> PowerPoint (이 연령만)
         </button>
       </div>
     </div>
 
     <div class="button-group">
       <button class="btn btn-secondary" onclick="goToStep(5)">← 이전</button>
-      <button class="btn btn-gold" onclick="resetAll()">🔄 새로운 계획 만들기</button>
+      <button class="btn btn-gold" onclick="resetEverything()">🔄 처음부터 (담은 것도 지움)</button>
     </div>
   </div>
 
@@ -1926,7 +1933,7 @@ function goToStep(n) {
   if (n === 2) renderConfirmKeywords();
   if (n === 4) generatePrograms();
   if (n === 5) generateNarrative();
-  if (n === 6) generateAnnualPlan();
+  if (n === 6) { generateAnnualPlan(); updateSavedBanner(); }
 
   // 화면 전환
   document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
@@ -1968,55 +1975,61 @@ function resetAll() {
 }
 
 /* ==========================================
-   📄 Word 다운로드 (docx 라이브러리)
+   여러 연령 담기 (장바구니) — 원장님 요청
+========================================== */
+window.__SAVED = window.__SAVED || [];
+
+function currentEntry() {
+  return {
+    age: state.selectedAge,
+    ageLabel: (typeof AGE_LABELS !== 'undefined' ? AGE_LABELS[state.selectedAge] : state.selectedAge) || state.selectedAge,
+    narrative: JSON.parse(JSON.stringify(state.narrative)),
+    annualPlan: JSON.parse(JSON.stringify(state.annualPlan)),
+  };
+}
+
+function updateSavedBanner() {
+  const el = document.getElementById('saved-banner');
+  if (!el) return;
+  const n = window.__SAVED.length;
+  if (!n) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'block';
+  el.innerHTML = '✅ 지금까지 담은 연령: <b>' + window.__SAVED.map(s => s.ageLabel).join(', ') +
+    '</b> (' + n + '개) — [전체 연령 하나로 Word 저장]을 누르면 이 연령들이 <b>지금 화면 연령까지 모두</b> 한 파일로 들어갑니다.';
+}
+
+function saveAndAddMore() {
+  if (!state.narrative || !state.annualPlan || !state.annualPlan.length) {
+    alert('먼저 연간표까지 만들어 주세요.');
+    return;
+  }
+  window.__SAVED.push(currentEntry());
+  updateSavedBanner();
+  resetAll(); // state만 초기화하고 처음 화면으로 (__SAVED는 유지)
+  alert('저장했어요! 이제 다른 연령을 만들어 주세요.\n다 만든 뒤 6단계에서 [전체 연령 하나로 Word 저장]을 누르시면 됩니다.');
+}
+
+function resetEverything() {
+  window.__SAVED = [];
+  updateSavedBanner();
+  resetAll();
+}
+
+/* ==========================================
+   📄 Word 다운로드 (docx) — 담은 연령 전체를 한 파일로
 ========================================== */
 async function downloadWord() {
   try {
     const { Document, Packer, Paragraph, TextRun, HeadingLevel,
-            Table, TableRow, TableCell, WidthType, AlignmentType,
-            BorderStyle, ShadingType } = docx;
+            Table, TableRow, TableCell, WidthType, AlignmentType } = docx;
 
-    const isInfant = ['0-1', '2'].includes(state.selectedAge);
-    const n = state.narrative;
+    // 지금 화면의 연령 + 담아둔 연령들 = 전체
+    const entries = window.__SAVED.concat([currentEntry()]);
 
-    // 연령별 색상 테마 (# 제거한 6자리 hex)
-    const theme = getAgeTheme();
     const hex = (c) => c.replace('#', '').toUpperCase();
-    const C_HEADER = hex(theme.headerBg);
-    const C_MONTH = hex(theme.monthBg);
-    const C_SUBJECT = hex(theme.subjectBg);
-    const C_GOAL = hex(theme.goalBg);
-    const C_ACCENT = hex(theme.accent);
+    const themeFor = (age) => (AGE_THEMES[age] || AGE_THEMES['2']);
 
-    // 표 행 생성
-    const tableRows = [];
-
-    // 표 제목 행
-    tableRows.push(new TableRow({
-      children: [new TableCell({
-        columnSpan: 4,
-        shading: { fill: C_HEADER },
-        children: [new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text: n.programName, bold: true, size: 28, color: C_ACCENT })]
-        })]
-      })]
-    }));
-
-    // 헤더 행 (4컬럼)
-    tableRows.push(new TableRow({
-      tableHeader: true,
-      children: ['월', '활동(놀이) 이름', '활동 영역', '놀이 설명'].map(text => new TableCell({
-        shading: { fill: C_HEADER },
-        children: [new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text, bold: true, color: C_ACCENT })]
-        })]
-      }))
-    }));
-
-    // 키워드/목표 셀의 내용 (목표 표만)
-    function buildGoalCellChildren(goals) {
+    function buildGoalCellChildren(goals, C_ACCENT) {
       return goals.map(goal => {
         const [label, content] = goal.split(': ');
         return new Paragraph({
@@ -2028,8 +2041,6 @@ async function downloadWord() {
         });
       });
     }
-
-    // 놀이 설명 셀의 내용 (놀이 단계만)
     function buildStepsCellChildren(steps) {
       return steps.map((step, idx) => new Paragraph({
         children: [new TextRun({ text: `${idx + 1}. ${step}` })],
@@ -2037,168 +2048,99 @@ async function downloadWord() {
       }));
     }
 
-    // 데이터 행
-    state.annualPlan.forEach(row => {
-      if (row.twoActivities) {
-        // 영아 - 월 2개 활동
-        tableRows.push(new TableRow({
-          children: [
-            new TableCell({
-              rowSpan: 2,
-              shading: { fill: C_MONTH },
-              children: [new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: row.month, bold: true, color: C_ACCENT })]
-              })]
-            }),
-            new TableCell({
-              shading: { fill: C_SUBJECT },
-              children: [new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: row.activity1.name, bold: true, color: C_ACCENT })]
-              })]
-            }),
-            new TableCell({
-              shading: { fill: C_GOAL },
-              children: buildGoalCellChildren(row.activity1.goals)
-            }),
-            new TableCell({
-              children: buildStepsCellChildren(row.activity1.steps)
-            })
-          ]
-        }));
-        tableRows.push(new TableRow({
-          children: [
-            new TableCell({
-              shading: { fill: C_SUBJECT },
-              children: [new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: row.activity2.name, bold: true, color: C_ACCENT })]
-              })]
-            }),
-            new TableCell({
-              shading: { fill: C_GOAL },
-              children: buildGoalCellChildren(row.activity2.goals)
-            }),
-            new TableCell({
-              children: buildStepsCellChildren(row.activity2.steps)
-            })
-          ]
-        }));
-      } else {
-        // 유아 - 월 1개 활동
-        tableRows.push(new TableRow({
-          children: [
-            new TableCell({
-              shading: { fill: C_MONTH },
-              children: [new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: row.month, bold: true, color: C_ACCENT })]
-              })]
-            }),
-            new TableCell({
-              shading: { fill: C_SUBJECT },
-              children: [new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: row.activity.name, bold: true, color: C_ACCENT })]
-              })]
-            }),
-            new TableCell({
-              shading: { fill: C_GOAL },
-              children: buildGoalCellChildren(row.activity.goals)
-            }),
-            new TableCell({
-              children: buildStepsCellChildren(row.activity.steps)
-            })
-          ]
-        }));
-      }
-    });
+    function buildTableRows(entry) {
+      const theme = themeFor(entry.age);
+      const C_HEADER = hex(theme.headerBg);
+      const C_MONTH = hex(theme.monthBg);
+      const C_SUBJECT = hex(theme.subjectBg);
+      const C_GOAL = hex(theme.goalBg);
+      const C_ACCENT = hex(theme.accent);
+      const n = entry.narrative;
+      const rows = [];
+      rows.push(new TableRow({ children: [new TableCell({
+        columnSpan: 4, shading: { fill: C_HEADER },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: n.programName, bold: true, size: 28, color: C_ACCENT })] })]
+      })] }));
+      rows.push(new TableRow({ tableHeader: true,
+        children: ['월', '활동(놀이) 이름', '활동 영역', '놀이 설명'].map(text => new TableCell({
+          shading: { fill: C_HEADER },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text, bold: true, color: C_ACCENT })] })]
+        })) }));
+      entry.annualPlan.forEach(row => {
+        if (row.twoActivities) {
+          rows.push(new TableRow({ children: [
+            new TableCell({ rowSpan: 2, shading: { fill: C_MONTH },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.month, bold: true, color: C_ACCENT })] })] }),
+            new TableCell({ shading: { fill: C_SUBJECT },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.activity1.name, bold: true, color: C_ACCENT })] })] }),
+            new TableCell({ shading: { fill: C_GOAL }, children: buildGoalCellChildren(row.activity1.goals, C_ACCENT) }),
+            new TableCell({ children: buildStepsCellChildren(row.activity1.steps) })
+          ] }));
+          rows.push(new TableRow({ children: [
+            new TableCell({ shading: { fill: C_SUBJECT },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.activity2.name, bold: true, color: C_ACCENT })] })] }),
+            new TableCell({ shading: { fill: C_GOAL }, children: buildGoalCellChildren(row.activity2.goals, C_ACCENT) }),
+            new TableCell({ children: buildStepsCellChildren(row.activity2.steps) })
+          ] }));
+        } else {
+          rows.push(new TableRow({ children: [
+            new TableCell({ shading: { fill: C_MONTH },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.month, bold: true, color: C_ACCENT })] })] }),
+            new TableCell({ shading: { fill: C_SUBJECT },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.activity.name, bold: true, color: C_ACCENT })] })] }),
+            new TableCell({ shading: { fill: C_GOAL }, children: buildGoalCellChildren(row.activity.goals, C_ACCENT) }),
+            new TableCell({ children: buildStepsCellChildren(row.activity.steps) })
+          ] }));
+        }
+      });
+      return rows;
+    }
 
-    // 문서 생성
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: [
-          // ========== 표지 영역 ==========
-          // 상단 여백
-          new Paragraph({ text: "", spacing: { before: 400 } }),
+    function buildProgramChildren(entry, isFirst) {
+      const theme = themeFor(entry.age);
+      const C_ACCENT = hex(theme.accent);
+      const n = entry.narrative;
+      const out = [];
+      out.push(new Paragraph({ text: "", spacing: { before: 400 }, pageBreakBefore: !isFirst }));
+      out.push(new Paragraph({ alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: "특색보육 프로그램", bold: true, color: C_ACCENT, size: 22 })],
+        spacing: { after: 100 } }));
+      out.push(new Paragraph({ heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: n.programName, bold: true, size: 40, color: "1A3A5C" })],
+        spacing: { after: 200 } }));
+      out.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [
+        new TextRun({ text: `${n.age}`, bold: true, color: C_ACCENT, size: 22 }),
+        new TextRun({ text: "  |  ", color: "CCCCCC", size: 22 }),
+        new TextRun({ text: n.keywords.join(' · '), color: "666666", size: 22 })
+      ], spacing: { after: 400 } }));
+      out.push(new Paragraph({ children: [new TextRun({ text: "▶  프로그램 목표", bold: true, color: "C89B4A", size: 26 })], spacing: { before: 300, after: 150 } }));
+      n.objectives.forEach((o, i) => out.push(new Paragraph({ children: [new TextRun({ text: `${i + 1}. ${o}`, size: 22 })], spacing: { after: 80 } })));
+      out.push(new Paragraph({ children: [new TextRun({ text: "▶  프로그램 목적", bold: true, color: "C89B4A", size: 26 })], spacing: { before: 400, after: 150 } }));
+      out.push(new Paragraph({ children: [new TextRun({ text: n.purpose, size: 22 })], spacing: { after: 300 } }));
+      out.push(new Paragraph({ children: [new TextRun({ text: "▶  연간 계획표", bold: true, color: "C89B4A", size: 26 })], spacing: { before: 500, after: 200 } }));
+      out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, columnWidths: [600, 1400, 2200, 5800], rows: buildTableRows(entry) }));
+      return out;
+    }
 
-          // 카테고리 (작은 부제)
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: "특색보육 프로그램", bold: true, color: C_ACCENT, size: 22 })],
-            spacing: { after: 100 }
-          }),
+    let allChildren = [];
+    entries.forEach((entry, idx) => { allChildren = allChildren.concat(buildProgramChildren(entry, idx === 0)); });
+    allChildren.push(new Paragraph({ text: "", spacing: { before: 400 } }));
+    allChildren.push(new Paragraph({ alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: "우리아이들 영유아교육디자인연구소", color: "C89B4A", size: 18 })], spacing: { before: 300 } }));
 
-          // 메인 제목
-          new Paragraph({
-            heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: n.programName, bold: true, size: 40, color: "1A3A5C" })],
-            spacing: { after: 200 }
-          }),
-
-          // 부제 (연령 + 키워드)
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({ text: `${n.age}`, bold: true, color: C_ACCENT, size: 22 }),
-              new TextRun({ text: "  |  ", color: "CCCCCC", size: 22 }),
-              new TextRun({ text: n.keywords.join(' · '), color: "666666", size: 22 })
-            ],
-            spacing: { after: 400 }
-          }),
-
-          // ========== 본문 영역 ==========
-          // 프로그램 목표
-          new Paragraph({
-            children: [new TextRun({ text: "▶  프로그램 목표", bold: true, color: "C89B4A", size: 26 })],
-            spacing: { before: 300, after: 150 }
-          }),
-          ...n.objectives.map((o, i) => new Paragraph({
-            children: [new TextRun({ text: `${i+1}. ${o}`, size: 22 })],
-            spacing: { after: 80 }
-          })),
-
-          // 프로그램 목적
-          new Paragraph({
-            children: [new TextRun({ text: "▶  프로그램 목적", bold: true, color: "C89B4A", size: 26 })],
-            spacing: { before: 400, after: 150 }
-          }),
-          new Paragraph({
-            children: [new TextRun({ text: n.purpose, size: 22 })],
-            spacing: { after: 300 }
-          }),
-
-          // 연간표 제목
-          new Paragraph({
-            children: [new TextRun({ text: "▶  연간 계획표", bold: true, color: "C89B4A", size: 26 })],
-            spacing: { before: 500, after: 200 }
-          }),
-
-          // 표 (4컬럼 비율)
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            columnWidths: [600, 1400, 2200, 5800],
-            rows: tableRows
-          }),
-
-          // 푸터
-          new Paragraph({ text: "", spacing: { before: 400 } }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: "우리아이들 영유아교육디자인연구소", color: "C89B4A", size: 18 })],
-            spacing: { before: 300 }
-          })
-        ]
-      }]
-    });
-
+    const doc = new Document({ sections: [{ properties: {}, children: allChildren }] });
     const blob = await Packer.toBlob(doc);
-    const filename = `${n.programName.replace(/[\\/:*?"<>|]/g, '_')}_연간계획.docx`;
+    const many = entries.length > 1;
+    const first = (entries[0].narrative.programName || '연간계획').replace(/[\\/:*?"<>|]/g, '_');
+    const filename = many ? `연간계획_전체(${entries.length}개연령).docx` : `${first}_연간계획.docx`;
     saveAs(blob, filename);
-
   } catch (err) {
     console.error('Word 다운로드 오류:', err);
     alert('Word 파일 생성 중 오류가 발생했습니다: ' + err.message);
