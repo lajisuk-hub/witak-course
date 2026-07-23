@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_SECTIONS } from '@/lib/sampleSections';
 import { loadAll, patch, loadSections, markDone } from '@/lib/store';
 import { readNoticeFile } from '@/lib/readFile';
-import { buildFormDoc, downloadBlob } from '@/lib/formDoc';
+import { downloadBlob } from '@/lib/formDoc';
+import { buildTocDesignDoc } from '@/lib/tocDesignDoc';
 import { useMe } from '@/lib/auth';
 import { DEFAULT_SETTING, FONTS, describeSetting, isEmptySetting } from '@/lib/docSetting';
 
@@ -111,23 +112,17 @@ export default function Home() {
   const usedIds = new Set(items.map((it) => it.matchId).filter(Boolean));
   const unused = sections.filter((s) => !usedIds.has(s.id));
 
-  // 목차 문서 만들기 — 원장님이 올린 "목차 서식"의 글꼴·여백을 그대로 쓴다
+  // 목차 문서 만들기 — 원장님이 올린 "디자인 목차 서식"을 그대로 쓰고,
+  // 각 챕터·항목 제목만 우리 지자체 항목으로 바꿔치기한다 (디자인은 안 건드림).
   async function download() {
     setError('');
     setBusy('목차 문서를 만드는 중입니다...');
     try {
-      const blocks = [
-        { kind: 'title', text: '목       차' },
-        { kind: 'body', text: '' },
-        ...items.map((it, i) => ({ kind: 'body', text: `${i + 1}.  ${it.name}` })),
-      ];
-      const { blob, name } = await buildFormDoc({
-        kind: 'toc',
-        phone: me.phone,
-        blocks,
+      const { blob, name } = await buildTocDesignDoc({
+        items,
         city,
+        phone: me.phone,
         student: applicant || me.name,
-        docName: '목차',
         onProgress: setBusy,
       });
       downloadBlob(blob, name);
