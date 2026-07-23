@@ -1,0 +1,2402 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>특색보육 프로그램 연간계획 생성기 v0.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@500;700&display=swap" rel="stylesheet">
+
+<!-- Word 다운로드용 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+
+<!-- PPT 다운로드용 -->
+<script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@v3.12.0/dist/pptxgen.bundle.js"></script>
+
+<style>
+  :root {
+    --navy: #1a3a5c;
+    --navy-light: #2d5a8c;
+    --cream: #faf7f0;
+    --cream-dark: #f0ebe0;
+    --gold: #c89b4a;
+    --gold-light: #e0b870;
+    --green-header: #d4e4c4;  /* 샘플 PDF의 연두색 헤더 */
+    --green-border: #a8c890;
+    --gray: #6b7280;
+    --gray-light: #e5e7eb;
+    --shadow: 0 4px 12px rgba(26, 58, 92, 0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #ececec;
+    color: #333;
+    min-height: 100vh;
+    line-height: 1.6;
+    padding: 20px;
+  }
+
+  /* 컨트롤 패널 (상단) */
+  .control-panel {
+    max-width: 900px;
+    margin: 0 auto 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .control-header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+    color: white;
+    padding: 20px 30px;
+    text-align: center;
+  }
+
+  .control-header h1 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .control-header p {
+    font-size: 13px;
+    opacity: 0.9;
+  }
+
+  /* 진행 단계 */
+  .progress {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 14px;
+    background: var(--cream-dark);
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: white;
+    border-radius: 16px;
+    font-size: 12px;
+    color: var(--gray);
+    transition: all 0.3s;
+  }
+
+  .step.active {
+    background: var(--gold);
+    color: white;
+    font-weight: 500;
+  }
+
+  .step.completed {
+    background: var(--navy);
+    color: white;
+  }
+
+  .step-num {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+  }
+
+  .step:not(.active):not(.completed) .step-num {
+    background: var(--gray-light);
+    color: var(--gray);
+  }
+
+  .arrow { color: var(--gray); font-size: 11px; }
+
+  /* 메인 콘텐츠 - 문서 스타일 */
+  .document {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    box-shadow: var(--shadow);
+    padding: 60px 70px;
+    min-height: 600px;
+    position: relative;
+  }
+
+  .step-content { display: none; }
+  .step-content.active { display: block; animation: fadeIn 0.4s; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 문서 섹션 헤더 (샘플 PDF 스타일) */
+  .doc-section-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--navy);
+    padding-bottom: 8px;
+  }
+
+  .section-num {
+    background: white;
+    border: 2px solid var(--navy);
+    color: var(--navy);
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .section-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .step-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+
+  .step-desc {
+    color: var(--gray);
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+
+  /* 키워드 그리드 */
+  .keyword-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .keyword-card {
+    background: white;
+    border: 2px solid var(--gray-light);
+    border-radius: 8px;
+    padding: 18px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .keyword-card:hover {
+    border-color: var(--gold-light);
+    background: var(--cream);
+  }
+
+  .keyword-card.selected {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: white;
+  }
+
+  .keyword-card.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .keyword-card.disabled:hover {
+    border-color: var(--gray-light);
+    background: white;
+  }
+
+  .keyword-icon { font-size: 26px; margin-bottom: 6px; }
+  .keyword-name { font-size: 14px; font-weight: 500; }
+
+  .check-mark {
+    position: absolute; top: 6px; right: 6px;
+    width: 20px; height: 20px;
+    background: var(--gold);
+    color: white;
+    border-radius: 50%;
+    display: none;
+    align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+
+  .keyword-card.selected .check-mark { display: flex; }
+
+  /* 안내 박스 */
+  .info-box {
+    background: var(--cream);
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid var(--gold);
+    font-size: 14px;
+  }
+
+  .counter-num {
+    font-weight: 700;
+    color: var(--gold);
+    font-size: 16px;
+  }
+
+  /* 버튼 */
+  .button-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 32px;
+  }
+
+  .btn {
+    padding: 12px 28px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .btn-primary {
+    background: var(--navy);
+    color: white;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--navy-light);
+  }
+
+  .btn-primary:disabled {
+    background: var(--gray-light);
+    color: var(--gray);
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: white;
+    color: var(--navy);
+    border: 2px solid var(--gray-light);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--navy);
+    background: var(--cream);
+  }
+
+  .btn-gold {
+    background: var(--gold);
+    color: white;
+  }
+
+  .btn-gold:hover {
+    background: var(--gold-light);
+  }
+
+  /* 확인 화면 */
+  .confirm-box {
+    background: var(--cream);
+    border: 2px dashed var(--gold);
+    border-radius: 8px;
+    padding: 32px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .confirm-keywords {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
+
+  .confirm-keyword {
+    background: var(--navy);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* 연령 카드 */
+  .age-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .age-card {
+    background: white;
+    border: 2px solid var(--gray-light);
+    border-radius: 8px;
+    padding: 24px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .age-card:hover {
+    border-color: var(--gold-light);
+    background: var(--cream);
+  }
+
+  .age-card.selected {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: white;
+  }
+
+  .age-num {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .age-label { font-size: 12px; opacity: 0.85; }
+
+  /* 프로그램명 카드 */
+  .program-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .program-card {
+    background: white;
+    border: 2px solid var(--gray-light);
+    border-radius: 8px;
+    padding: 18px 22px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .program-card:hover {
+    border-color: var(--gold-light);
+    background: var(--cream);
+  }
+
+  .program-card.selected {
+    border-color: var(--navy);
+    background: var(--navy);
+    color: white;
+  }
+
+  .program-num {
+    width: 32px; height: 32px;
+    background: var(--cream-dark);
+    color: var(--navy);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .program-card.selected .program-num {
+    background: var(--gold);
+    color: white;
+  }
+
+  .program-name {
+    font-size: 15px;
+    font-weight: 500;
+    flex: 1;
+  }
+
+  /* 목표·활동 서술 (문서 스타일) */
+  .doc-body {
+    background: white;
+    border: 1px solid var(--gray-light);
+    border-radius: 4px;
+    padding: 32px 36px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .doc-program-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    text-align: center;
+    padding: 12px;
+    background: var(--green-header);
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+
+  .doc-subtitle {
+    font-weight: 700;
+    color: var(--navy);
+    margin: 16px 0 8px;
+    padding-left: 8px;
+    border-left: 3px solid var(--gold);
+  }
+
+  .doc-text {
+    color: #444;
+    margin-bottom: 12px;
+  }
+
+  /* 연간표 (샘플 PDF 스타일) */
+  .annual-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 13px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .annual-table thead tr {
+    background: var(--green-header);
+  }
+
+  .annual-table thead th.title-row {
+    background: linear-gradient(135deg, #d4e4c4 0%, #c4dab0 100%);
+    text-align: center;
+    padding: 14px;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--navy);
+    border: 1px solid var(--green-border);
+    letter-spacing: 0.02em;
+  }
+
+  .annual-table th, .annual-table td {
+    border: 1px solid #c8d8b8;
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+
+  .annual-table th {
+    background: var(--green-header);
+    color: var(--navy);
+    font-weight: 700;
+    text-align: center;
+    font-size: 13px;
+    padding: 12px 10px;
+    letter-spacing: 0.02em;
+  }
+
+  .annual-table td.month-cell {
+    background: #f5f9ed;
+    text-align: center;
+    font-weight: 700;
+    color: var(--navy);
+    width: 55px;
+    font-size: 14px;
+  }
+
+  .annual-table td.subject-cell {
+    text-align: center;
+    font-weight: 600;
+    width: 130px;
+    color: var(--navy);
+    background: #fafdf6;
+    font-size: 13px;
+    padding: 10px 8px;
+    line-height: 1.5;
+  }
+
+  .annual-table td.goal-cell {
+    width: 200px;
+    padding: 8px;
+    background: #fdfbf3;
+    vertical-align: middle;
+  }
+
+  .annual-table td.detail-cell {
+    line-height: 1.65;
+    padding: 12px 14px;
+    vertical-align: middle;
+    background: #ffffff;
+  }
+
+  /* 목표 표 (별도 셀에 들어가는 작은 표) */
+  .goal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(200, 155, 74, 0.08);
+  }
+
+  .goal-table tr {
+    border-bottom: 1px solid #e8dcb8;
+  }
+
+  .goal-table tr:last-child {
+    border-bottom: none;
+  }
+
+  .goal-table td {
+    border: none;
+    padding: 7px 10px;
+    line-height: 1.5;
+  }
+
+  .goal-table td.goal-label {
+    background: #f0e8c8;
+    font-weight: 700;
+    color: var(--navy);
+    width: 65px;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 11.5px;
+    border-right: 1px solid #e0d4a8;
+  }
+
+  .goal-table td.goal-content {
+    background: #fbf8ee;
+    color: #444;
+    font-size: 12px;
+  }
+
+  /* 놀이 단계 리스트 */
+  .play-steps {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.75;
+  }
+
+  .play-steps li {
+    margin-bottom: 5px;
+    color: #333;
+    font-size: 13px;
+  }
+
+  .play-steps li::marker {
+    color: var(--gold);
+  }
+
+  /* 다운로드 버튼 영역 */
+  .download-section {
+    background: var(--cream);
+    border-radius: 8px;
+    padding: 24px;
+    margin-top: 24px;
+    text-align: center;
+  }
+
+  .download-section h3 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 16px;
+    color: var(--navy);
+    margin-bottom: 14px;
+  }
+
+  .download-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn-download {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+
+  .btn-word {
+    background: #2b579a;
+    color: white;
+  }
+
+  .btn-word:hover { background: #1e3f73; }
+
+  .btn-ppt {
+    background: #d24726;
+    color: white;
+  }
+
+  .btn-ppt:hover { background: #a83a1e; }
+
+  /* 로딩 스피너 */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.6s linear infinite;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* 푸터 */
+  .footer-hint {
+    text-align: center;
+    color: var(--gray);
+    font-size: 12px;
+    padding: 14px;
+    background: white;
+    border-top: 1px solid var(--gray-light);
+    max-width: 900px;
+    margin: 0 auto;
+    border-radius: 0 0 8px 8px;
+  }
+
+  @media (max-width: 700px) {
+    body { padding: 10px; }
+    .document { padding: 30px 20px; }
+    .control-header { padding: 16px 20px; }
+    .progress { padding: 10px 6px; }
+    .step { padding: 4px 8px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 컨트롤 패널 -->
+<div class="control-panel">
+  <div class="control-header">
+    <h1>🌱 특색보육 프로그램 연간계획 생성기</h1>
+    <p>키워드와 연령에 맞춘 맞춤형 연간 프로그램을 만들어드립니다</p>
+  </div>
+
+  <div class="progress">
+    <div class="step active" id="progress-1">
+      <div class="step-num">1</div><span>키워드</span>
+    </div>
+    <span class="arrow">→</span>
+    <div class="step" id="progress-2">
+      <div class="step-num">2</div><span>확인</span>
+    </div>
+    <span class="arrow">→</span>
+    <div class="step" id="progress-3">
+      <div class="step-num">3</div><span>연령</span>
+    </div>
+    <span class="arrow">→</span>
+    <div class="step" id="progress-4">
+      <div class="step-num">4</div><span>프로그램명</span>
+    </div>
+    <span class="arrow">→</span>
+    <div class="step" id="progress-5">
+      <div class="step-num">5</div><span>목표·활동</span>
+    </div>
+    <span class="arrow">→</span>
+    <div class="step" id="progress-6">
+      <div class="step-num">6</div><span>연간표</span>
+    </div>
+  </div>
+</div>
+
+<!-- 메인 문서 -->
+<div class="document">
+
+  <!-- 1단계: 키워드 선택 -->
+  <div class="step-content active" id="step-1">
+    <div class="doc-section-header">
+      
+      <span class="section-title">특색보육 프로그램</span>
+    </div>
+
+    <h2 class="step-title">어떤 주제로 연간을 계획하시겠어요?</h2>
+    <p class="step-desc">관심 있는 키워드를 <strong>1~3개</strong> 선택해주세요.</p>
+
+    <div class="info-box">
+      <span>선택된 키워드</span>
+      <span><span class="counter-num" id="counter-num">0</span> / 3</span>
+    </div>
+
+    <div class="keyword-grid" id="keyword-grid">
+      <!-- 키워드 동적 생성 -->
+    </div>
+
+    <div class="button-group">
+      <div></div>
+      <button class="btn btn-primary" id="btn-step1-next" disabled onclick="goToStep(2)">
+        다음 단계로 →
+      </button>
+    </div>
+  </div>
+
+  <!-- 2단계: 키워드 확인 -->
+  <div class="step-content" id="step-2">
+    <div class="doc-section-header">
+      
+      <span class="section-title">특색보육 프로그램</span>
+    </div>
+
+    <h2 class="step-title">선택하신 키워드가 맞나요?</h2>
+    <p class="step-desc">아래 키워드로 연간 프로그램을 계획해드릴게요.</p>
+
+    <div class="confirm-box">
+      <div style="font-size: 13px; color: var(--gray); margin-bottom: 8px;">선택하신 키워드</div>
+      <div class="confirm-keywords" id="confirm-keywords"></div>
+      <div style="font-size: 16px; color: var(--navy); margin-top: 14px;">
+        ✨ 위 주제로 연간 프로그램을 만들어드릴까요?
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button class="btn btn-secondary" onclick="goToStep(1)">← 키워드 다시 선택</button>
+      <button class="btn btn-primary" onclick="goToStep(3)">네, 진행할게요 →</button>
+    </div>
+  </div>
+
+  <!-- 3단계: 연령 선택 -->
+  <div class="step-content" id="step-3">
+    <div class="doc-section-header">
+      
+      <span class="section-title">특색보육 프로그램</span>
+    </div>
+
+    <h2 class="step-title">어느 연령의 프로그램을 만드시겠어요?</h2>
+    <p class="step-desc">연령별 발달특성에 맞춰 프로그램이 구성됩니다.</p>
+
+    <div class="age-grid" id="age-grid">
+      <div class="age-card" data-age="0-1">
+        <div class="age-num">0~1세</div><div class="age-label">영아</div>
+      </div>
+      <div class="age-card" data-age="2">
+        <div class="age-num">2세</div><div class="age-label">영아</div>
+      </div>
+      <div class="age-card" data-age="3">
+        <div class="age-num">3세</div><div class="age-label">유아</div>
+      </div>
+      <div class="age-card" data-age="4">
+        <div class="age-num">4세</div><div class="age-label">유아</div>
+      </div>
+      <div class="age-card" data-age="5">
+        <div class="age-num">5세</div><div class="age-label">유아</div>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button class="btn btn-secondary" onclick="goToStep(2)">← 이전</button>
+      <button class="btn btn-primary" id="btn-step3-next" disabled onclick="goToStep(4)">
+        다음 단계로 →
+      </button>
+    </div>
+  </div>
+
+  <!-- 4단계: 프로그램명 선택 -->
+  <div class="step-content" id="step-4">
+    <div class="doc-section-header">
+      
+      <span class="section-title">특색보육 프로그램</span>
+    </div>
+
+    <h2 class="step-title">추천 프로그램명입니다</h2>
+    <p class="step-desc">선택하신 키워드와 연령에 맞춘 프로그램명을 추천드려요. 마음에 드는 것을 선택해주세요.</p>
+
+    <div class="info-box" style="background: #fdf6e3;">
+      <div>
+        <strong>키워드:</strong> <span id="step4-keywords"></span><br>
+        <strong>연령:</strong> <span id="step4-age"></span>
+      </div>
+    </div>
+
+    <div class="program-list" id="program-list"></div>
+
+    <div class="button-group">
+      <button class="btn btn-secondary" onclick="goToStep(3)">← 이전</button>
+      <button class="btn btn-primary" id="btn-step4-next" disabled onclick="goToStep(5)">
+        다음 단계로 →
+      </button>
+    </div>
+  </div>
+
+  <!-- 5단계: 목표·활동 서술 -->
+  <div class="step-content" id="step-5">
+    <div class="doc-section-header">
+      
+      <span class="section-title">특색보육 프로그램</span>
+    </div>
+
+    <h2 class="step-title">프로그램 목표 및 활동내용</h2>
+    <p class="step-desc">선택하신 프로그램의 목표와 활동내용입니다. 확인 후 다음 단계로 진행해주세요.</p>
+
+    <div class="doc-body" id="doc-narrative"></div>
+
+    <div class="button-group">
+      <button class="btn btn-secondary" onclick="goToStep(4)">← 이전</button>
+      <button class="btn btn-primary" onclick="goToStep(6)">연간표 만들기 →</button>
+    </div>
+  </div>
+
+  <!-- 6단계: 연간표 -->
+  <div class="step-content" id="step-6">
+    <div class="doc-section-header">
+      
+      <span class="section-title">특색보육 프로그램</span>
+    </div>
+
+    <h2 class="step-title">📅 연간 프로그램 계획</h2>
+    <p class="step-desc">아래 연간계획을 확인하시고 Word나 PPT 파일로 다운로드하세요.</p>
+
+    <div id="annual-table-container"></div>
+
+    <div class="download-section">
+      <h3>📥 문서 다운로드</h3>
+      <div class="download-buttons">
+        <button class="btn-download btn-word" onclick="downloadWord()">
+          <span style="font-size: 18px;">📄</span> Word (.docx) 다운로드
+        </button>
+        <button class="btn-download btn-ppt" onclick="downloadPPT()">
+          <span style="font-size: 18px;">📊</span> PowerPoint (.pptx) 다운로드
+        </button>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button class="btn btn-secondary" onclick="goToStep(5)">← 이전</button>
+      <button class="btn btn-gold" onclick="resetAll()">🔄 새로운 계획 만들기</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-hint">
+  💡 v0.1 프로토타입 · 우리아이들 영유아교육디자인연구소
+</div>
+
+<script>
+/* ==========================================
+   데이터 정의
+========================================== */
+
+// 키워드 목록
+const KEYWORDS = [
+  { id: 'nature', icon: '🌿', name: '자연생태' },
+  { id: 'sense', icon: '✋', name: '오감놀이' },
+  { id: 'digital', icon: '💻', name: '디지털' },
+  { id: 'habit', icon: '🪥', name: '기본생활습관' },
+  { id: 'book', icon: '📚', name: '그림책' },
+  { id: 'art', icon: '🎨', name: '예술표현' },
+  { id: 'music', icon: '🎵', name: '음악·신체' },
+  { id: 'social', icon: '🤝', name: '사회성' },
+  { id: 'emotion', icon: '💝', name: '정서·강점' },
+  { id: 'cooking', icon: '🍳', name: '요리·식습관' },
+  { id: 'family', icon: '👨‍👩‍👧', name: '가정연계' },
+  { id: 'literacy', icon: '✏️', name: '문해·수' },
+];
+
+// 연령 라벨
+const AGE_LABELS = {
+  '0-1': '0~1세 영아',
+  '2': '2세 영아',
+  '3': '3세 유아',
+  '4': '4세 유아',
+  '5': '5세 유아'
+};
+
+// 월 순서 (어린이집 학년도: 3월 시작)
+const MONTHS = ['3월','4월','5월','6월','7월','8월','9월','10월','11월','12월','1월','2월'];
+
+// 연령별 색상 테마 (채도를 낮춘 차분한 파스텔 톤)
+const AGE_THEMES = {
+  '0-1': {
+    name: '버터 옐로우',
+    headerBg: '#F5E9B8',     // 채도 낮춘 버터 옐로우
+    headerBg2: '#E8D89E',
+    monthBg: '#FAF4DE',
+    subjectBg: '#FCF8EA',
+    goalBg: '#F8F1D8',       // 채도 낮춘 부드러운 옐로우
+    goalLabelBg: '#EDD9A0',
+    border: '#C9B57A',
+    accent: '#8B6F2C'
+  },
+  '2': {
+    name: '세이지 그린',
+    headerBg: '#C8D8B5',     // 채도 낮춘 세이지 그린
+    headerBg2: '#B5C9A0',
+    monthBg: '#EBF1E2',
+    subjectBg: '#F4F8EE',
+    goalBg: '#E2EAD5',
+    goalLabelBg: '#B5C9A0',
+    border: '#8FA877',
+    accent: '#4A6336'
+  },
+  '3': {
+    name: '더스티 블루',
+    headerBg: '#BFD2DD',     // 채도 낮춘 차분한 블루
+    headerBg2: '#A8C0CF',
+    monthBg: '#E8EFF3',
+    subjectBg: '#F2F6F8',
+    goalBg: '#DCE6EC',
+    goalLabelBg: '#A8C0CF',
+    border: '#7095A8',
+    accent: '#1F4A66'
+  },
+  '4': {
+    name: '더스티 코랄',
+    headerBg: '#EFC9C0',     // 채도 낮춘 부드러운 코랄
+    headerBg2: '#E2B0A4',
+    monthBg: '#F7E7E2',
+    subjectBg: '#FBF1ED',
+    goalBg: '#EFD9D2',
+    goalLabelBg: '#E2B0A4',
+    border: '#C58E7F',
+    accent: '#7E3A2C'
+  },
+  '5': {
+    name: '머스키 라벤더',
+    headerBg: '#CCC2D8',     // 채도 낮춘 차분한 라벤더
+    headerBg2: '#B8A8C8',
+    monthBg: '#E8E2EF',
+    subjectBg: '#F1ECF5',
+    goalBg: '#DDD3E5',
+    goalLabelBg: '#B8A8C8',
+    border: '#8E7AA5',
+    accent: '#4A3266'
+  }
+};
+
+// 현재 선택된 연령에 맞는 테마 가져오기
+function getAgeTheme() {
+  return AGE_THEMES[state.selectedAge] || AGE_THEMES['2'];
+}
+
+// 키워드별 목표 영역 매핑 (선택한 키워드에 따라 표 안에 들어갈 영역)
+const KEYWORD_DOMAINS = {
+  'nature': {
+    '3월': ['자연관찰: 주변 자연물에 관심 가지기', '감각경험: 자연물 만지고 탐색하기', '정서함양: 자연 속에서 편안함 느끼기'],
+    '4월': ['자연관찰: 봄의 변화 발견하기', '탐구태도: 호기심을 가지고 관찰하기', '심미감: 자연의 아름다움 느끼기'],
+    '5월': ['생명존중: 작은 생명 소중히 여기기', '관계형성: 가족과 자연 경험 나누기', '감각통합: 오감으로 자연 느끼기'],
+    '6월': ['지역탐색: 우리동네 자연 알아가기', '관찰력: 변화하는 자연 발견하기', '표현력: 자연 경험 표현하기'],
+    '7월': ['감각경험: 물의 다양한 특성 느끼기', '신체조절: 물놀이로 신체 움직이기', '안전인식: 안전하게 놀이하기'],
+    '8월': ['청각자극: 자연의 소리 구분하기', '집중력: 소리에 귀 기울이기', '표현력: 들은 소리 표현하기'],
+    '9월': ['자연관찰: 가을 자연 발견하기', '감각통합: 가을 열매 탐색하기', '심미감: 가을 색채 느끼기'],
+    '10월': ['창의표현: 자연물로 표현하기', '탐구력: 자연물 특성 발견하기', '미적감수성: 자연의 아름다움 느끼기'],
+    '11월': ['생활습관: 자연환경 보호하기', '책임감: 환경을 소중히 여기기', '실천력: 일상에서 환경 지키기'],
+    '12월': ['감각경험: 겨울의 차가움 느끼기', '관찰력: 겨울 자연 변화 발견하기', '정서표현: 겨울 느낌 나누기'],
+    '1월': ['탐구력: 겨울 자연현상 알아가기', '신체활동: 겨울 놀이 즐기기', '협동: 친구와 함께 놀이하기'],
+    '2월': ['성장인식: 한 해 동안의 변화 느끼기', '관찰력: 봄의 신호 발견하기', '기대감: 새 학기 준비하기']
+  },
+  'sense': {
+    '3월': ['시각자극: 다양한 색과 모양 탐색', '촉각경험: 다양한 질감 느끼기', '정서안정: 즐거운 감각경험 가지기'],
+    '4월': ['후각경험: 봄의 향기 맡아보기', '시각자극: 봄의 색깔 발견하기', '감각통합: 오감으로 봄 느끼기'],
+    '5월': ['미각경험: 다양한 맛 탐색', '촉각경험: 부드러움/거침 구분', '관계형성: 가족과 감각 경험 나누기'],
+    '6월': ['청각경험: 동네의 소리 듣기', '시각자극: 동네 풍경 관찰', '공간감각: 동네 공간 인식'],
+    '7월': ['미각경험: 식자재 맛 탐색', '후각경험: 음식 향 맡기', '촉각경험: 식자재 만지기'],
+    '8월': ['청각자극: 다양한 소리 구분', '집중력: 소리 변별하기', '표현력: 들은 소리 따라하기'],
+    '9월': ['시각경험: 가을 색깔 탐색', '촉각경험: 가을 자연물 만지기', '미각경험: 가을 열매 맛보기'],
+    '10월': ['청각경험: 자연 악기 소리 듣기', '신체표현: 소리에 맞춰 움직이기', '창의표현: 소리 만들어보기'],
+    '11월': ['감각통합: 다양한 감각 함께 사용', '의사소통: 감각 경험 표현하기', '집중력: 감각에 주의 기울이기'],
+    '12월': ['온도감각: 따뜻함과 차가움 구분', '촉각경험: 다양한 질감 비교', '심미감: 겨울의 분위기 느끼기'],
+    '1월': ['시각자극: 겨울 풍경 관찰', '촉각경험: 눈, 얼음 만지기', '신체감각: 추위 인식하고 보호하기'],
+    '2월': ['감각통합: 한 해 감각경험 회상', '표현력: 좋아하는 감각 표현', '성장인식: 감각 능력 발달 느끼기']
+  },
+  'digital': {
+    '3월': ['디지털인식: 디지털기기 친숙해지기', '관찰력: 사진으로 환경 살펴보기', '의사소통: 디지털로 표현하기'],
+    '4월': ['기록능력: 사진으로 자연 담기', '시간개념: 순서대로 기록하기', '관찰력: 디지털로 자연 관찰'],
+    '5월': ['탐구력: 다각도로 사진 보기', '관찰력: 세밀하게 관찰하기', '표현력: 본 것 설명하기'],
+    '6월': ['공간인식: 지도로 동네 알아가기', '디지털리터러시: 디지털 도구 활용', '탐구력: 정보 찾아보기'],
+    '7월': ['분류능력: 사진으로 분류하기', '관찰력: 공통점·차이점 찾기', '디지털표현: 결과물 공유하기'],
+    '8월': ['청각자극: 녹음 소리 듣고 추측', '디지털도구활용: 녹음·재생하기', '추론력: 소리의 정체 알아가기'],
+    '9월': ['창의표현: 디지털로 꾸미기', '심미감: 가을 사진 감상', '협동: 함께 작품 만들기'],
+    '10월': ['음악감수성: 디지털 음악 따라하기', '창의표현: 자연물 소리 만들기', '디지털리터러시: 도구 활용'],
+    '11월': ['언어능력: 올바른 표현 익히기', '메타인지: 자기 목소리 듣기', '의사소통: 정확하게 말하기'],
+    '12월': ['창의표현: 디지털로 작품 만들기', '계절감: 겨울 이미지 활용', '심미감: 디지털 작품 감상'],
+    '1월': ['관찰력: 영상으로 풍경 보기', '비교분석: 실제와 영상 비교', '추론력: 영상 속 의미 파악'],
+    '2월': ['창의표현: 디지털로 책 만들기', '문해력: 이야기 구성하기', '성취감: 작품 완성의 기쁨']
+  },
+  'habit': {
+    '3월': ['자조능력: 스스로 인사하기', '규칙인식: 어린이집 규칙 알기', '소속감: 우리반 친구 알기'],
+    '4월': ['자조능력: 옷차림 스스로 챙기기', '청결습관: 손씻기 바르게 하기', '안전인식: 봄철 안전 지키기'],
+    '5월': ['예의범절: 가족에게 인사하기', '존중태도: 가족 소중히 여기기', '자기관리: 약속 지키기'],
+    '6월': ['공중도덕: 동네에서 바르게 행동', '안전인식: 교통안전 지키기', '협력: 이웃과 인사 나누기'],
+    '7월': ['식습관: 골고루 먹기', '청결: 식사 전후 정리하기', '감사: 음식에 감사하기'],
+    '8월': ['청결: 깨끗한 환경 유지', '자기관리: 더위에 건강 챙기기', '예의: 친구에게 양보하기'],
+    '9월': ['예절: 어른께 인사 잘하기', '나눔: 가족과 함께 나누기', '감사: 풍성한 가을에 감사'],
+    '10월': ['책임감: 자기 물건 정리하기', '협동: 함께 활동에 참여', '안전: 야외활동 안전수칙'],
+    '11월': ['바른말: 고운 말 사용하기', '경청: 다른 사람 말 듣기', '배려: 친구 마음 살피기'],
+    '12월': ['감사: 한 해 돌아보며 감사', '나눔: 따뜻한 마음 나누기', '예절: 인사 바르게 하기'],
+    '1월': ['자조능력: 겨울옷 스스로 입기', '안전: 빙판길 조심하기', '건강: 추위에 건강 지키기'],
+    '2월': ['책임감: 마무리 잘하기', '독립심: 형님반 준비하기', '자신감: 내가 할 수 있어요']
+  },
+  'book': {
+    '3월': ['문해력: 그림책에 관심 갖기', '집중력: 끝까지 듣기', '상상력: 이야기 속 상상하기'],
+    '4월': ['관찰력: 그림 자세히 보기', '어휘력: 새로운 단어 익히기', '표현력: 느낌 말하기'],
+    '5월': ['공감능력: 등장인물 마음 이해', '관계: 가족 이야기 책 읽기', '정서표현: 느낌 나누기'],
+    '6월': ['지역이해: 동네 그림책 읽기', '탐구력: 책 속 정보 찾기', '표현력: 본 것 그리기'],
+    '7월': ['미적감수성: 그림책 감상', '창의력: 이야기 상상하기', '협동: 함께 책 보기'],
+    '8월': ['청각경험: 의성어 듣기', '언어유희: 재미있는 말놀이', '창의표현: 소리 표현하기'],
+    '9월': ['지식확장: 정보책 읽기', '탐구력: 가을 정보 찾기', '심미감: 가을 그림책 감상'],
+    '10월': ['상상력: 환상동화 즐기기', '창의표현: 이야기 만들기', '문해력: 글자에 관심 갖기'],
+    '11월': ['공감능력: 다양한 인물 이해', '바른태도: 책 소중히 다루기', '비판적사고: 좋은 행동 구분'],
+    '12월': ['감사: 따뜻한 이야기 나누기', '나눔: 책으로 마음 전하기', '문해력: 글과 그림 즐기기'],
+    '1월': ['상상력: 겨울 이야기 즐기기', '창의표현: 결말 바꿔보기', '문해력: 좋아하는 책 읽기'],
+    '2월': ['문해력: 이야기 구성하기', '창의력: 우리만의 책 만들기', '성취감: 작품 완성하기']
+  },
+  'art': {
+    '3월': ['창의표현: 자유롭게 표현하기', '재료탐색: 미술재료 알아가기', '심미감: 작품 감상하기'],
+    '4월': ['관찰표현: 본 것 그리기', '색채감각: 봄 색깔 사용하기', '창의력: 자연물로 표현'],
+    '5월': ['감정표현: 마음을 그림으로', '관계: 가족 그리기', '창의표현: 선물 만들기'],
+    '6월': ['공간표현: 우리동네 그리기', '관찰력: 건물 특징 표현', '협동: 함께 작품 만들기'],
+    '7월': ['창의표현: 물놀이 표현', '재료탐색: 물감으로 표현', '신체표현: 큰 동작으로 그리기'],
+    '8월': ['청각시각통합: 소리 그리기', '창의표현: 자유 표현', '음악적감수성: 리듬 표현'],
+    '9월': ['관찰표현: 가을 풍경 그리기', '재료활용: 자연물 작품', '심미감: 가을 색감'],
+    '10월': ['소리표현: 악기 만들기', '창의력: 도구 만들어 보기', '협동: 합주하기'],
+    '11월': ['언어시각통합: 말 표현하기', '관계표현: 친구 그리기', '바른태도: 작품 존중'],
+    '12월': ['감정표현: 따뜻함 표현', '나눔: 작품으로 마음 전하기', '심미감: 겨울 작품 감상'],
+    '1월': ['관찰표현: 겨울 그리기', '재료탐색: 차가운 색 사용', '창의력: 새로운 표현 시도'],
+    '2월': ['종합표현: 한 해 작품 모으기', '성취감: 전시회 열기', '자신감: 내 작품 소개']
+  },
+  'music': {
+    '3월': ['음악감수성: 노래 듣고 즐기기', '신체표현: 음악에 맞춰 움직이기', '정서안정: 음악으로 편안함'],
+    '4월': ['리듬감: 봄노래 부르기', '신체조절: 율동 따라하기', '협동: 함께 노래하기'],
+    '5월': ['표현력: 가족노래 부르기', '관계: 가족과 노래 나누기', '정서: 따뜻한 마음 표현'],
+    '6월': ['음악탐색: 동네 소리 음악화', '신체조절: 걷기/뛰기 리듬', '창의표현: 노래 만들기'],
+    '7월': ['신체활동: 물놀이 율동', '리듬감: 시원한 리듬 만들기', '협응력: 신체조절 능력'],
+    '8월': ['청각구별: 다양한 소리 듣기', '음악적표현: 소리 따라하기', '창의력: 새 소리 만들기'],
+    '9월': ['음악감수성: 가을 음악 감상', '신체표현: 가을 율동', '정서: 차분한 마음 표현'],
+    '10월': ['악기탐색: 자연악기 만들기', '리듬감: 자연 리듬 만들기', '협동: 합주 즐기기'],
+    '11월': ['언어음악: 노랫말 익히기', '바른자세: 노래 부를 때 자세', '경청: 친구 노래 듣기'],
+    '12월': ['음악감수성: 겨울 음악 감상', '신체표현: 캐롤 율동', '나눔: 노래로 마음 전하기'],
+    '1월': ['신체조절: 추위 극복 율동', '협동: 함께 노래 부르기', '리듬감: 겨울 리듬 즐기기'],
+    '2월': ['종합표현: 좋아하는 노래 발표', '성취감: 1년 노래 모음', '자신감: 자신있게 부르기']
+  },
+  'social': {
+    '3월': ['자기조절: 차례 지키기', '또래관계: 친구 이름 알기', '긍정적 정서: 새 친구 사귀는 즐거움'],
+    '4월': ['자기조절: 활동에 집중하기', '또래관계: 함께 놀이하기', '긍정적 정서: 봄 활동의 즐거움'],
+    '5월': ['관계형성: 가족과 함께 활동', '존중태도: 가족 마음 이해', '긍정적 정서: 사랑받는 느낌'],
+    '6월': ['공동체의식: 우리동네 일원', '협력: 이웃과 인사하기', '긍정적 정서: 소속감 느끼기'],
+    '7월': ['협동: 함께 요리하기', '나눔: 함께 먹는 즐거움', '긍정적 정서: 협력의 기쁨'],
+    '8월': ['공감능력: 친구 마음 알기', '의사소통: 듣고 말하기', '긍정적 정서: 소통의 즐거움'],
+    '9월': ['배려: 친구 도와주기', '협동: 함께 활동하기', '긍정적 정서: 도움 주고 받는 기쁨'],
+    '10월': ['협동: 줄을 묶고 함께 달리기', '공동목표: 함께 목표 이루기', '긍정적 정서: 성취의 기쁨'],
+    '11월': ['자기조절: 집단을 먼저 생각하기', '협력: 함께 줄다리기', '긍정적 정서: 신체활동에 흥미'],
+    '12월': ['규칙준수: 안전하게 뒤로 뛰기', '입장이해: 친구 입장 생각', '긍정적 정서: 신체활동 즐거움'],
+    '1월': ['인내심: 노력해서 해내기', '협력: 공동의 목표 이루기', '긍정적 정서: 도전의 즐거움'],
+    '2월': ['규칙준수: 장애물 피해 걷기', '협력: 함께 목표 달성', '긍정적 정서: 1년의 성취감']
+  },
+  'emotion': {
+    '3월': ['자기인식: 내가 잘하는 점 알기', '자존감: 강점 표현하기', '긍정정서: 잘하는 일의 행복감'],
+    '4월': ['자기표현: 나를 소개하기', '관계형성: 친구에게 다가가기', '긍정정서: 자신을 드러내는 즐거움'],
+    '5월': ['자기수용: 나를 칭찬하기', '자존감: 자랑스러움 느끼기', '긍정정서: 스스로 만족하기'],
+    '6월': ['자기효능감: 강점 인증서 만들기', '자신감: 강점 인정받기', '긍정정서: 가족과 강점 나누기'],
+    '7월': ['모델링: 위인의 강점 찾기', '동기부여: 강점 활용하기', '긍정정서: 본받고 싶은 마음'],
+    '8월': ['성공경험: 나의 성공 이야기', '자기효능감: 해낼 수 있다', '긍정정서: 성공의 기쁨'],
+    '9월': ['관계인식: 친구 강점 발견', '존중: 다른 강점 인정', '긍정정서: 강점이름 부르는 즐거움'],
+    '10월': ['관찰력: 친구 강점 알아맞히기', '관계강화: 친구를 깊이 알기', '긍정정서: 함께하는 즐거움'],
+    '11월': ['공동체의식: 우리반 강점 찾기', '협력: 강점으로 함께하기', '긍정정서: 우리반의 자부심'],
+    '12월': ['감사: 고마운 마음 표현', '관계: 감사 인사 나누기', '긍정정서: 감사의 따뜻함'],
+    '1월': ['성장인식: 멋지게 변한 나', '자기성찰: 나의 변화 돌아보기', '긍정정서: 성장의 자랑스러움'],
+    '2월': ['행복공유: 행복한 순간 회상', '관계: 함께한 행복 나누기', '긍정정서: 1년의 행복감']
+  },
+  'cooking': {
+    '3월': ['감각경험: 다양한 식자재 탐색', '식습관: 음식에 관심 갖기', '소근육: 식자재 다루기'],
+    '4월': ['식자재인식: 봄 식자재 알기', '미각경험: 봄 음식 맛보기', '감사: 자연의 선물'],
+    '5월': ['관계형성: 가족과 요리하기', '협동: 함께 만드는 즐거움', '감사: 가족의 마음 느끼기'],
+    '6월': ['지역인식: 우리동네 음식 알기', '문화이해: 지역 음식 경험', '소근육: 요리 도구 사용'],
+    '7월': ['식자재탐색: 다양한 재료 알기', '분류: 식자재 종류별 분류', '미각: 새로운 맛 도전'],
+    '8월': ['감각경험: 시원한 음식 만들기', '안전: 위생적 요리하기', '협동: 함께 요리하기'],
+    '9월': ['수확: 가을 식자재 알기', '감사: 풍성한 수확에 감사', '관계: 함께 나누어 먹기'],
+    '10월': ['창의표현: 자연물 요리', '심미감: 예쁘게 담기', '협동: 친구와 만들기'],
+    '11월': ['바른식습관: 골고루 먹기', '예절: 식사 예절 지키기', '경청: 음식 이야기 듣기'],
+    '12월': ['나눔: 따뜻한 음식 나누기', '감사: 한 해 음식에 감사', '관계: 함께하는 식사'],
+    '1월': ['따뜻한음식: 추위 이기는 요리', '건강: 영양 고른 식사', '자조: 스스로 먹기'],
+    '2월': ['종합경험: 좋아하는 요리 만들기', '성취감: 요리 완성의 기쁨', '자신감: 요리할 수 있어요']
+  },
+  'family': {
+    '3월': ['관계형성: 가족과 인사 나누기', '소속감: 우리 가족 알기', '정서안정: 가족의 사랑 느끼기'],
+    '4월': ['공동활동: 가족과 봄나들이', '관찰: 가족과 함께 자연 보기', '정서: 가족과의 추억'],
+    '5월': ['감사: 가족에게 감사 표현', '관계강화: 가족 사랑 나누기', '정서: 따뜻한 가족애'],
+    '6월': ['지역참여: 가족과 동네 탐색', '협력: 가족이 함께 하기', '소속감: 동네의 일원'],
+    '7월': ['공동요리: 가족과 음식 만들기', '협동: 함께 준비하기', '나눔: 함께 먹는 즐거움'],
+    '8월': ['공동활동: 가족과 소리탐색', '의사소통: 함께 이야기 나누기', '정서: 즐거운 가족 시간'],
+    '9월': ['전통문화: 가족과 명절 보내기', '감사: 풍성함에 감사', '관계: 친척과 만나기'],
+    '10월': ['공동작업: 가족과 작품 만들기', '협동: 역할 나누기', '성취: 함께 완성하는 기쁨'],
+    '11월': ['소통: 가족과 대화하기', '경청: 가족 이야기 듣기', '존중: 가족 의견 존중'],
+    '12월': ['감사: 1년 가족에게 감사', '나눔: 사랑 표현하기', '관계: 따뜻한 가족 시간'],
+    '1월': ['전통: 가족과 새해 맞이', '활동: 함께 겨울놀이', '소속감: 가족의 일원'],
+    '2월': ['성장공유: 1년 변화 나누기', '감사: 가족의 지원에 감사', '자긍심: 우리가족']
+  },
+  'literacy': {
+    '3월': ['문해환경: 글자에 관심 갖기', '듣기: 이야기 끝까지 듣기', '말하기: 자기 이름 말하기'],
+    '4월': ['수개념: 1, 2, 3 세어보기', '관찰: 봄 사물 수 세기', '비교: 많고 적음 알기'],
+    '5월': ['문해: 가족 이름 알기', '쓰기: 끄적이며 표현하기', '읽기: 그림으로 읽기'],
+    '6월': ['공간개념: 위/아래/옆 알기', '수개념: 동네 건물 세기', '문해: 표지판 읽기'],
+    '7월': ['분류: 같은 것끼리 모으기', '수: 식자재 수 세기', '문해: 음식 이름 알기'],
+    '8월': ['청각언어: 의성어 익히기', '발음: 정확하게 말하기', '어휘: 소리 단어 알기'],
+    '9월': ['수개념: 가을 열매 세기', '분류: 모양/크기별 분류', '비교: 같은점/다른점'],
+    '10월': ['수: 악기 박자 세기', '문해: 노랫말 따라 읽기', '쓰기: 글자 모방하기'],
+    '11월': ['바른말: 고운 말 익히기', '듣기: 끝까지 듣기', '말하기: 차례대로 말하기'],
+    '12월': ['문해: 카드에 마음 쓰기', '쓰기: 이름 써보기', '읽기: 좋아하는 책 읽기'],
+    '1월': ['수개념: 새해 날짜 알기', '시간: 1년 12개월 알기', '문해: 달력 읽기'],
+    '2월': ['종합문해: 우리 책 만들기', '쓰기: 글로 표현하기', '성취: 작품 완성하기']
+  }
+};
+
+// 키워드별 + 월별 놀이 이름과 상세 놀이단계 (~한다 종결)
+const KEYWORD_PLAYS = {
+  'nature': {
+    '3월': { name: '봄꽃 만나러 가요', steps: ['어린이집 마당과 산책길에서 피어나는 봄꽃을 찾아본다.', '꽃의 색깔과 모양을 자세히 관찰하고 이야기를 나눈다.', '꽃잎을 살짝 만져보며 부드러운 촉감을 느껴본다.', '발견한 꽃을 사진으로 찍거나 그림으로 그려본다.'] },
+    '4월': { name: '새싹 관찰일기', steps: ['교실이나 마당에 작은 화분을 마련하고 씨앗을 심어본다.', '매일 화분을 관찰하며 변화하는 모습을 살펴본다.', '새싹이 자라는 과정을 그림으로 기록해본다.', '식물에게 물을 주며 생명을 돌보는 경험을 한다.'] },
+    '5월': { name: '가족과 함께 자연놀이', steps: ['가족과 함께 동네 공원이나 산책로를 걸어본다.', '나뭇잎, 작은 돌, 꽃잎 등 자연물을 모아본다.', '모은 자연물로 가족과 함께 작품을 만들어본다.', '자연 속에서 발견한 것들을 가족과 이야기 나눈다.'] },
+    '6월': { name: '우리동네 자연지도', steps: ['선생님과 함께 동네를 산책하며 자연을 발견해본다.', '큰 나무, 꽃밭, 작은 텃밭 등 자연 장소를 찾아본다.', '발견한 장소를 큰 종이에 그림으로 그려본다.', '친구들과 함께 우리동네 자연지도를 완성한다.'] },
+    '7월': { name: '시원한 물놀이', steps: ['수반에 깨끗한 물을 받아 다양한 도구를 준비한다.', '물 위에 꽃잎이나 나뭇잎을 띄워본다.', '손으로 물을 떠보고 흘려보내며 물의 성질을 느껴본다.', '물놀이 후 안전하게 정리하는 습관을 기른다.'] },
+    '8월': { name: '여름 곤충 친구', steps: ['그림책이나 영상으로 여름에 만날 수 있는 곤충을 알아본다.', '안전한 장소에서 매미 소리, 풀벌레 소리를 들어본다.', '곤충의 모습을 그림으로 표현해본다.', '곤충도 소중한 생명임을 이야기 나눈다.'] },
+    '9월': { name: '가을 열매 보물찾기', steps: ['도토리, 밤, 솔방울 등 가을 열매를 찾아본다.', '열매의 모양, 크기, 색깔을 비교하며 관찰한다.', '주머니나 바구니에 좋아하는 열매를 모아본다.', '모은 열매로 친구들과 모양 만들기 놀이를 한다.'] },
+    '10월': { name: '단풍잎 작품 만들기', steps: ['색깔이 곱게 든 단풍잎을 주워 모은다.', '잎의 모양과 색깔이 다양함을 비교해본다.', '단풍잎을 종이 위에 놓고 크레파스로 본을 떠본다.', '완성한 작품을 친구들과 감상하며 이야기를 나눈다.'] },
+    '11월': { name: '환경 지킴이 놀이', steps: ['우리 주변에 버려진 쓰레기를 살펴본다.', '재활용할 수 있는 것과 없는 것을 분류해본다.', '교실에서 분리수거 약속을 함께 정해본다.', '환경을 지키는 작은 실천을 매일 해본다.'] },
+    '12월': { name: '겨울 자연 탐색', steps: ['바깥에 나가 겨울의 차가운 공기를 느껴본다.', '나뭇가지, 마른 잎 등 겨울 자연물을 관찰한다.', '입김을 불어보며 추운 날씨의 신기함을 경험한다.', '따뜻한 실내로 돌아와 느낀 점을 이야기한다.'] },
+    '1월': { name: '눈 결정 탐험', steps: ['눈이 오는 날 안전한 장소에서 눈을 관찰한다.', '검은 종이에 눈송이를 받아 모양을 살펴본다.', '눈을 손으로 만져보며 차가움과 부드러움을 느낀다.', '눈으로 작은 눈사람이나 모양을 만들어본다.'] },
+    '2월': { name: '봄을 기다리며', steps: ['겨울이 지나가고 봄이 오는 신호를 찾아본다.', '나뭇가지의 새 봉오리, 따뜻해지는 햇살을 발견한다.', '한 해 동안 만난 자연을 그림으로 정리한다.', '새 학기에 만나고 싶은 자연을 이야기 나눈다.'] }
+  },
+  'sense': {
+    '3월': { name: '오감 탐험상자', steps: ['다양한 질감의 재료(솜, 천, 종이 등)를 상자에 담는다.', '눈을 감고 손으로 만져보며 촉감을 느껴본다.', '어떤 느낌인지 친구들과 이야기를 나눈다.', '좋아하는 촉감의 재료를 골라 작품을 만든다.'] },
+    '4월': { name: '봄 향기 맡기', steps: ['봄꽃, 풀잎, 흙 등 봄에 만날 수 있는 향기를 준비한다.', '눈을 감고 코로 깊게 향기를 맡아본다.', '어떤 냄새인지 표현해보며 친구들과 비교한다.', '가장 좋아하는 봄 향기를 그림으로 표현한다.'] },
+    '5월': { name: '맛있는 가족 시간', steps: ['단맛, 짠맛, 신맛 등이 나는 안전한 음식을 준비한다.', '가족과 함께 한 가지씩 맛을 보며 표현해본다.', '같은 음식이라도 가족마다 느낌이 다름을 이야기한다.', '가장 좋아하는 맛이 무엇인지 가족과 나눈다.'] },
+    '6월': { name: '동네 소리 모으기', steps: ['선생님과 동네를 산책하며 다양한 소리를 들어본다.', '자동차 소리, 새 소리, 사람 소리 등을 구분해본다.', '교실로 돌아와 들었던 소리를 흉내내본다.', '동네 소리 지도를 만들어본다.'] },
+    '7월': { name: '식자재 오감놀이', steps: ['신선한 채소와 과일을 준비하여 만져보고 냄새를 맡는다.', '조각내어 모양과 색깔, 무늬를 관찰한다.', '안전하게 한 입씩 맛보며 다양한 맛을 경험한다.', '오감으로 느낀 식자재의 특징을 이야기 나눈다.'] },
+    '8월': { name: '소리 변신쇼', steps: ['주변에서 다양한 소리를 녹음하거나 직접 만들어본다.', '큰 소리/작은 소리, 빠른 소리/느린 소리를 비교한다.', '들은 소리를 몸짓이나 그림으로 표현해본다.', '친구가 만든 소리를 맞춰보는 놀이를 한다.'] },
+    '9월': { name: '가을 색깔 모으기', steps: ['가을의 다양한 색깔의 자연물을 모은다.', '색깔별로 분류하여 색 도감을 만들어본다.', '색깔의 진하기와 옅음을 비교하며 관찰한다.', '가을의 대표 색깔로 작품을 꾸며본다.'] },
+    '10월': { name: '자연 악기 연주회', steps: ['도토리, 밤, 마른 잎 등으로 작은 악기를 만들어본다.', '흔들기, 두드리기 등 다양한 방법으로 소리를 내본다.', '친구들과 함께 자연 악기 합주를 해본다.', '소리에 맞춰 몸을 움직여본다.'] },
+    '11월': { name: '오감 통합 탐색', steps: ['하나의 사물(예: 사과)을 오감으로 모두 탐색해본다.', '눈으로 보고, 손으로 만지고, 냄새 맡고, 맛본다.', '각 감각에서 느낀 점을 모두 모아 표현해본다.', '같은 사물도 감각마다 다른 정보를 알 수 있음을 안다.'] },
+    '12월': { name: '따뜻함과 차가움', steps: ['따뜻한 물건과 차가운 물건을 미리 준비한다.', '손으로 만져보며 온도의 차이를 느껴본다.', '어떤 느낌이 좋은지 친구들과 이야기 나눈다.', '겨울에는 어떻게 따뜻하게 지낼 수 있는지 알아본다.'] },
+    '1월': { name: '눈과 얼음 감각놀이', steps: ['안전한 양의 눈이나 얼음을 교실로 가져온다.', '손으로 만져보며 차가움과 녹는 변화를 관찰한다.', '시간이 지나며 물로 변하는 모습을 함께 본다.', '겨울 감각 경험을 그림으로 남긴다.'] },
+    '2월': { name: '내가 좋아하는 감각', steps: ['1년간 경험한 다양한 감각 활동을 회상해본다.', '가장 기억에 남는 감각 경험을 이야기 나눈다.', '내가 좋아하는 감각을 친구들에게 소개한다.', '감각 일기장을 만들어 가정으로 가져간다.'] }
+  },
+  'social': {
+    '3월': { name: '친구야 안녕', steps: ['우리반 친구의 이름을 한 명씩 부르며 인사한다.', '공을 굴려 받은 친구가 자기 이름과 좋아하는 것을 말한다.', '친구의 이름을 잘 듣고 기억하려고 노력한다.', '친구가 이야기할 때 끝까지 듣고 차례를 지킨다.'] },
+    '4월': { name: '마주보고 던지기', steps: ['짝과 마주보고 적당한 거리에 서서 공을 던지고 받는다.', '공을 던질 때 친구가 받기 좋게 천천히 던지는 연습을 한다.', '공이 떨어져도 짜증내지 않고 다시 시도해본다.', '활동 후 짝에게 고맙다는 인사를 나눈다.'] },
+    '5월': { name: '가족과 함께 협동놀이', steps: ['가족과 함께 할 수 있는 간단한 협동놀이를 정한다.', '서로의 손을 잡거나 발을 맞추며 활동을 시작한다.', '가족이 어려워할 때 도와주고 함께 즐긴다.', '활동 후 즐거웠던 점을 이야기 나눈다.'] },
+    '6월': { name: '한줄 기차 만들기', steps: ['친구들과 한 줄로 서서 앞 친구의 어깨를 잡는다.', '음악에 맞춰 천천히 함께 움직여본다.', '맨 앞 친구가 길을 안내하면 모두 따라간다.', '다른 친구도 맨 앞에 설 수 있도록 양보한다.'] },
+    '7월': { name: '고리 던지기', steps: ['목표물을 정해놓고 차례대로 고리를 던져본다.', '잘 안 들어가도 포기하지 않고 다시 시도한다.', '친구가 성공하면 함께 박수치며 격려한다.', '서로 양보하며 즐거운 분위기로 활동한다.'] },
+    '8월': { name: '짝과 징검다리 건너기', steps: ['바닥에 종이로 징검다리를 만들고 짝과 함께 건너본다.', '서로 손을 잡고 균형을 맞추며 천천히 이동한다.', '힘들어하는 친구가 있으면 기다려주고 도와준다.', '함께 끝까지 건너는 성취감을 나눈다.'] },
+    '9월': { name: '림보하기', steps: ['적당한 높이의 막대를 두 친구가 양 끝을 잡는다.', '한 명씩 차례대로 막대 아래를 통과해본다.', '나만 잘하기보다 친구들도 잘할 수 있게 응원한다.', '점점 낮아지는 막대에 도전하며 즐거움을 느낀다.'] },
+    '10월': { name: '줄 묶고 함께 달리기', steps: ['짝과 발목을 부드러운 천으로 가볍게 묶는다.', '"하나, 둘" 구령을 맞추며 함께 걷기 시작한다.', '서로의 속도를 맞추며 천천히 달려본다.', '약속한 규칙을 지키며 안전하게 활동한다.'] },
+    '11월': { name: '협동 줄다리기', steps: ['두 팀으로 나누어 긴 줄의 양쪽을 잡는다.', '같은 팀 친구들과 호흡을 맞춰 함께 당긴다.', '나보다 우리 팀을 먼저 생각하며 힘을 모은다.', '이기든 지든 서로에게 박수치며 격려한다.'] },
+    '12월': { name: '뒤로 뛰기', steps: ['지정된 안전한 공간에서 뒤로 뛰기를 연습한다.', '뒤를 잘 살피며 친구와 부딪히지 않게 조심한다.', '친구의 입장에서 나도 조심해야 함을 생각한다.', '약속한 규칙을 지키며 즐겁게 활동한다.'] },
+    '1월': { name: '양손 짚고 앞으로 걷기', steps: ['두 손과 두 발로 바닥을 짚고 곰처럼 걸어본다.', '힘들어도 포기하지 않고 끝까지 도전한다.', '짝과 함께 같은 방향으로 가는 목표를 정한다.', '서로 격려하며 함께 목표 지점에 도착한다.'] },
+    '2월': { name: '장애물 피해 걷기', steps: ['교실에 다양한 장애물을 안전하게 배치한다.', '약속된 규칙대로 장애물을 피해 걸어본다.', '친구와 부딪히지 않도록 함께 살피며 이동한다.', '1년간 함께 활동한 친구들에게 고마움을 전한다.'] }
+  },
+  'emotion': {
+    '3월': { name: '내가 잘하는 점', steps: ['내가 잘한다고 생각하는 점을 천천히 떠올려본다.', '잘하는 점 3가지를 그림으로 그려본다.', '잘하는 일을 할 때 얼마나 행복한지 표정 그림으로 표현한다.', '더 잘하고 싶은 마음이 있다면 작은 목표를 정해본다.'] },
+    '4월': { name: '나를 소개해요', steps: ['둥글게 둘러앉아 공을 굴리며 자기를 소개한다.', '"내 이름은 ○○야, 나는 ○○를 잘해"라고 말해본다.', '소개를 마치면 궁금한 친구에게 공을 굴려 보낸다.', '친구의 소개를 잘 듣고 박수로 응원한다.'] },
+    '5월': { name: '나를 칭찬해요', steps: ['거울 앞에 서서 자신을 바라본다.', '"○○야, 너 정말 멋져!"라고 자신을 칭찬해본다.', '양팔로 자신을 안아주며 머리도 쓰다듬어준다.', '잘하는 일이 자랑스럽다는 마음을 충분히 느껴본다.'] },
+    '6월': { name: '강점 인증서 만들기', steps: ['내가 잘하는 점을 증명하는 인증서를 만들어본다.', '내 사진을 붙이고 인정받고 싶은 점을 적어본다.', '예쁘게 꾸민 후 자신의 이름이나 사인을 한다.', '친구들에게도 인증서를 만들어 선물해본다.'] },
+    '7월': { name: '위인의 강점 찾기', steps: ['이순신, 세종대왕 등 위인의 동화책을 함께 본다.', '주인공이 어떤 강점을 가졌는지 이야기 나눈다.', '주인공이 강점으로 무엇을 해냈는지 알아본다.', '나에게도 비슷한 강점이 있는지 생각해본다.'] },
+    '8월': { name: '나의 성공 이야기', steps: ['최근에 잘 해낸 일을 떠올려본다.', '"보조바퀴 없이 자전거 탔어요" 등 이야기를 나눈다.', '어떤 강점을 사용해서 성공했는지 생각해본다.', '친구의 성공 이야기를 듣고 함께 축하해준다.'] },
+    '9월': { name: '친구의 강점이름', steps: ['선생님의 강점을 찾아 강점이름을 지어본다.', '친구의 강점을 발견하고 강점이름을 만들어준다.', '강점이름을 명찰에 적어 서로 불러본다.', '강점이름이 적힌 명찰을 가족도 불러주도록 한다.'] },
+    '10월': { name: '친구 강점 수수께끼', steps: ['친구들의 작은 사진을 상자에 모아둔다.', '한 장을 뽑아 친구들이 보이지 않게 가린다.', '"이 친구는 ○○를 잘합니다"라고 강점을 설명한다.', '맞춘 친구가 다음 사진을 뽑아 문제를 낸다.'] },
+    '11월': { name: '우리반을 빛낸 친구들', steps: ['"한국을 빛낸 100명의 위인들" 노래를 들어본다.', '우리반 친구들의 강점이름을 모두 모아본다.', '강점이름을 박자에 맞춰 노래로 만들어본다.', '친구들과 함께 우리반 강점 노래를 부른다.'] },
+    '12월': { name: '감사 인사하기', steps: ['최근에 감사한 일이 있었는지 떠올려본다.', '누구에게, 무엇에 대해 감사한지 이야기 나눈다.', '감사한 마음을 카드, 그림, 말로 표현해본다.', '직접 그 사람에게 찾아가 감사 인사를 전한다.'] },
+    '1월': { name: '강점 자화상', steps: ['차분한 음악을 들으며 1년간 잘했던 일을 회상한다.', '가장 자랑스러운 나의 모습을 떠올려본다.', '멋지게 변한 나의 모습을 그림으로 그려본다.', '친구들의 강점 자화상을 함께 감상한다.'] },
+    '2월': { name: '행복 공유하기', steps: ['1년간 만든 작품과 활동 사진을 함께 본다.', '강점을 활용해 행복했던 순간을 떠올려본다.', '"내가 가장 행복했던 적은 언제인가요?"를 이야기한다.', '경험을 그림으로 그리고 친구들과 나눈다.'] }
+  },
+  'habit': {
+    '3월': { name: '인사 잘하는 우리반', steps: ['아침에 만나면 눈을 마주치며 인사하는 약속을 정한다.', '선생님과 친구들에게 밝게 인사하는 연습을 한다.', '집에서 가족에게도 인사하는 약속을 한다.', '인사를 잘 한 날에는 스티커를 붙여본다.'] },
+    '4월': { name: '깨끗한 손 만들기', steps: ['손씻기 6단계를 노래로 익혀본다.', '비누 거품을 충분히 내어 손가락 사이까지 씻는다.', '거울을 보며 깨끗하게 씻었는지 확인한다.', '식사 전과 화장실 후 손씻기 약속을 지킨다.'] },
+    '5월': { name: '가족 사랑 표현하기', steps: ['가족에게 어떤 인사를 하면 좋을지 이야기한다.', '"사랑해요", "감사해요"를 직접 말해본다.', '가족에게 작은 도움을 드리는 약속을 정한다.', '실천한 후에 느낀 기분을 이야기 나눈다.'] },
+    '6월': { name: '안전한 우리동네', steps: ['동네에서 만날 수 있는 위험한 상황을 알아본다.', '횡단보도 건너기, 차 조심하기를 연습해본다.', '안전 약속을 친구들과 함께 정해본다.', '동네에서 만나는 어른께 인사하는 연습을 한다.'] },
+    '7월': { name: '골고루 잘 먹기', steps: ['오늘 식판에 어떤 음식이 있는지 살펴본다.', '싫어하는 음식도 한 입은 도전해본다.', '꼭꼭 씹어 먹는 약속을 지켜본다.', '식사 후 자기 자리를 깨끗이 정리한다.'] },
+    '8월': { name: '깨끗하고 시원하게', steps: ['더운 여름 깨끗하게 지내는 방법을 알아본다.', '땀을 흘린 후 씻고 옷을 갈아입는 연습을 한다.', '시원한 물을 적당히 마시는 습관을 들인다.', '여름 건강 약속을 친구들과 정한다.'] },
+    '9월': { name: '추석 예절 배우기', steps: ['추석에 가족, 친척과 어떻게 인사하는지 배운다.', '큰절하는 방법을 천천히 연습해본다.', '어른께 존댓말 사용하는 연습을 한다.', '추석 음식을 감사한 마음으로 먹는다.'] },
+    '10월': { name: '내 물건 스스로 정리', steps: ['교실에서 사용한 장난감을 제자리에 둔다.', '내 가방, 옷, 신발을 스스로 정리한다.', '정리가 끝나면 친구의 정리도 도와준다.', '깨끗해진 교실을 보며 뿌듯함을 느낀다.'] },
+    '11월': { name: '고운 말 사용하기', steps: ['친구에게 어떤 말이 기분 좋은지 이야기한다.', '"고마워", "미안해", "괜찮아"를 연습해본다.', '친구가 말할 때 끝까지 들어주는 연습을 한다.', '하루 동안 고운 말 사용을 약속한다.'] },
+    '12월': { name: '감사하는 마음', steps: ['1년 동안 고마웠던 사람을 떠올려본다.', '선생님, 친구, 가족에게 감사 카드를 만든다.', '직접 찾아가서 감사한 마음을 전한다.', '받은 감사 인사가 어떤 느낌인지 나눈다.'] },
+    '1월': { name: '겨울옷 스스로 입기', steps: ['겨울옷을 입는 순서를 친구들과 정해본다.', '내복, 외투, 목도리, 모자 순으로 입어본다.', '단추 채우기, 지퍼 올리기를 연습해본다.', '나갈 때 스스로 옷을 챙기는 약속을 지킨다.'] },
+    '2월': { name: '형님반 준비하기', steps: ['지금까지 배운 생활습관을 점검해본다.', '아직 부족한 부분을 친구들과 이야기 나눈다.', '형님반에서 잘 지내기 위한 약속을 정한다.', '한 해 동안 성장한 자신을 칭찬해본다.'] }
+  },
+  'book': {
+    '3월': { name: '그림책 친구', steps: ['우리반에서 좋아하는 그림책을 한 권 골라본다.', '책 제목과 표지 그림을 자세히 살펴본다.', '선생님이 읽어주는 이야기를 끝까지 들어본다.', '가장 기억에 남는 장면을 친구들에게 이야기한다.'] },
+    '4월': { name: '봄 그림책 산책', steps: ['봄을 주제로 한 그림책을 함께 읽어본다.', '책 속 봄의 모습과 우리 동네 봄을 비교해본다.', '책에 나온 새 단어를 따라 말해본다.', '책 속 장면처럼 봄 산책을 나가본다.'] },
+    '5월': { name: '가족 이야기책', steps: ['가족이 등장하는 그림책을 함께 읽는다.', '책 속 가족과 우리 가족의 닮은 점을 찾아본다.', '우리 가족에게 일어난 따뜻한 일을 이야기한다.', '가족 이야기를 그림으로 그려본다.'] },
+    '6월': { name: '동네 그림책', steps: ['우리 동네를 소재로 한 그림책을 살펴본다.', '책 속 동네 시설과 우리 동네를 비교해본다.', '동네에서 일하는 사람들의 이야기를 알아본다.', '내가 좋아하는 동네 장소를 그려본다.'] },
+    '7월': { name: '여름 책 놀이', steps: ['여름 풍경이 담긴 그림책을 골라본다.', '책 속 시원한 장면을 함께 상상해본다.', '주인공이 되어 이야기를 흉내내본다.', '친구와 함께 책 놀이를 해본다.'] },
+    '8월': { name: '소리 책 만들기', steps: ['의성어, 의태어가 가득한 그림책을 읽는다.', '책 속 재미있는 소리를 따라 해본다.', '우리만의 소리 책을 만들어본다.', '소리 책을 친구들 앞에서 읽어준다.'] },
+    '9월': { name: '가을 정보책', steps: ['가을에 대한 정보가 담긴 책을 함께 본다.', '책에서 새로 알게 된 사실을 이야기한다.', '직접 가을을 관찰하며 책과 비교해본다.', '내가 발견한 가을을 책으로 만들어본다.'] },
+    '10월': { name: '상상 이야기 만들기', steps: ['좋아하는 그림책의 한 장면을 골라본다.', '뒷이야기를 자유롭게 상상해본다.', '친구들과 이야기를 이어가며 만들어본다.', '완성된 이야기를 함께 나눠본다.'] },
+    '11월': { name: '책 소중히 다루기', steps: ['책을 어떻게 다뤄야 하는지 이야기 나눈다.', '깨끗한 손으로 책을 보는 약속을 정한다.', '책장을 천천히 넘기는 연습을 한다.', '읽고 난 후 제자리에 두는 습관을 기른다.'] },
+    '12월': { name: '따뜻한 이야기 나눔', steps: ['따뜻한 마음이 담긴 그림책을 골라본다.', '책 속 인물의 따뜻한 행동을 찾아본다.', '나도 누군가에게 따뜻하게 해줄 수 있는지 생각한다.', '실천한 후 책의 인물처럼 행복한지 이야기한다.'] },
+    '1월': { name: '겨울 책 탐험', steps: ['겨울이 배경인 그림책을 모아 살펴본다.', '책마다 그려진 겨울이 다름을 발견한다.', '내가 경험한 겨울과 비교해본다.', '가장 마음에 드는 겨울 그림을 따라 그려본다.'] },
+    '2월': { name: '우리반 책 만들기', steps: ['1년간 함께한 추억을 친구들과 이야기 나눈다.', '각자 한 장면씩 그림으로 표현해본다.', '그림을 모아 우리반만의 책을 만든다.', '완성된 책을 가족과 함께 본다.'] }
+  },
+  'art': {
+    '3월': { name: '자유 표현하기', steps: ['다양한 미술 재료를 자유롭게 탐색해본다.', '내가 표현하고 싶은 것을 종이에 그려본다.', '친구들의 작품을 서로 감상해본다.', '재료의 특징을 알아가며 즐겁게 표현한다.'] },
+    '4월': { name: '봄 색깔 그림', steps: ['봄에 만날 수 있는 다양한 색깔을 살펴본다.', '봄의 색으로 그림을 자유롭게 그려본다.', '꽃, 새싹, 햇살을 표현해본다.', '완성된 봄 그림을 교실에 전시한다.'] },
+    '5월': { name: '가족 선물 만들기', steps: ['가족에게 선물할 작품을 구상해본다.', '카네이션, 카드 등 만들고 싶은 것을 정한다.', '정성껏 색칠하고 꾸며본다.', '가족에게 마음을 담아 전달한다.'] },
+    '6월': { name: '우리동네 그리기', steps: ['우리 동네의 건물과 길을 떠올려본다.', '큰 종이에 동네 지도를 그려본다.', '내가 좋아하는 장소를 자세히 표현한다.', '친구들과 함께 우리동네 그림을 완성한다.'] },
+    '7월': { name: '시원한 물놀이 그림', steps: ['파란색, 하늘색 물감을 준비한다.', '큰 붓으로 시원한 물을 표현해본다.', '몸 전체를 움직이며 큰 그림을 그려본다.', '친구들과 함께 바다나 수영장을 만들어본다.'] },
+    '8월': { name: '소리를 그림으로', steps: ['눈을 감고 다양한 소리를 들어본다.', '들리는 소리를 색깔과 모양으로 표현한다.', '큰 소리는 큰 모양, 작은 소리는 작은 모양으로 표현한다.', '소리 그림을 친구들과 비교해본다.'] },
+    '9월': { name: '가을 풍경화', steps: ['가을 풍경을 사진이나 그림책으로 살펴본다.', '단풍, 노을, 들판 등 가을의 색을 표현한다.', '낙엽을 붙이거나 자연물을 활용해본다.', '완성된 가을 풍경화를 함께 감상한다.'] },
+    '10월': { name: '나만의 악기 만들기', steps: ['다양한 재료로 악기를 만들어본다.', '컵, 병, 고무줄 등으로 소리를 만들어본다.', '악기를 색칠하고 멋지게 꾸며본다.', '친구들과 함께 합주해본다.'] },
+    '11월': { name: '친구 얼굴 그리기', steps: ['짝이 된 친구의 얼굴을 자세히 관찰한다.', '눈, 코, 입, 머리카락 등을 표현해본다.', '친구의 좋은 점을 그림 옆에 적어본다.', '완성된 친구 그림을 선물한다.'] },
+    '12월': { name: '따뜻한 마음 카드', steps: ['1년 동안 고마웠던 사람을 떠올린다.', '카드에 정성껏 그림을 그리고 색칠한다.', '"사랑해요", "고마워요" 메시지를 담는다.', '직접 전달하며 마음을 표현한다.'] },
+    '1월': { name: '겨울 작품 만들기', steps: ['겨울 풍경을 떠올리며 작품을 구상한다.', '흰 종이에 차가운 색감으로 표현해본다.', '눈사람, 눈송이, 눈 내리는 풍경을 그려본다.', '완성된 작품을 친구들과 공유한다.'] },
+    '2월': { name: '우리반 전시회', steps: ['1년간 만든 작품을 모아본다.', '가장 마음에 드는 작품을 골라본다.', '교실을 작은 미술관으로 꾸며본다.', '가족을 초대하여 작품을 소개한다.'] }
+  },
+  'music': {
+    '3월': { name: '안녕 노래 부르기', steps: ['친구들과 인사 노래를 함께 부른다.', '서로의 이름을 넣어 노래를 불러본다.', '간단한 율동을 곁들여 즐겁게 부른다.', '매일 아침 인사 노래로 하루를 시작한다.'] },
+    '4월': { name: '봄꽃 율동', steps: ['"봄꽃" 노래를 들으며 가사를 익힌다.', '꽃이 피어나는 모습을 몸으로 표현한다.', '느린 동작과 빠른 동작을 구분해 본다.', '친구들과 함께 봄꽃 무용을 발표한다.'] },
+    '5월': { name: '가족 사랑 노래', steps: ['가족 노래를 함께 부른다.', '노래 속 가족 호칭을 우리 가족으로 바꿔본다.', '가족과 함께 부를 수 있는 율동을 정한다.', '집에 가서 가족과 함께 불러본다.'] },
+    '6월': { name: '동네 소리 음악', steps: ['우리 동네의 다양한 소리를 들어본다.', '들은 소리로 작은 음악을 만들어본다.', '리듬을 정해 친구들과 합주한다.', '동네 소리 음악회를 열어본다.'] },
+    '7월': { name: '신나는 물놀이 율동', steps: ['신나는 여름 노래를 함께 들어본다.', '물놀이하는 동작을 만들어본다.', '음악에 맞춰 시원하게 움직여본다.', '친구들과 함께 즐겁게 율동한다.'] },
+    '8월': { name: '소리 모방 놀이', steps: ['다양한 동물, 자연의 소리를 들어본다.', '들은 소리를 그대로 따라 해본다.', '큰 소리, 작은 소리, 빠른 소리를 구분한다.', '친구가 낸 소리를 맞혀본다.'] },
+    '9월': { name: '가을 음악 감상', steps: ['차분한 가을 음악을 함께 들어본다.', '음악을 들으며 떠오르는 장면을 이야기한다.', '음악에 맞춰 천천히 움직여본다.', '음악과 가을 풍경의 어울림을 느낀다.'] },
+    '10월': { name: '자연 악기 합주', steps: ['도토리, 솔방울 등으로 만든 악기를 모은다.', '리듬에 맞춰 한 사람씩 소리를 내본다.', '점차 모두 함께 연주해본다.', '자연 악기 합주를 녹음해 들어본다.'] },
+    '11월': { name: '바른 노래 자세', steps: ['노래할 때 어떤 자세가 좋은지 알아본다.', '곧게 서서 입을 크게 벌려 부르는 연습을 한다.', '친구의 노래를 끝까지 듣는 연습을 한다.', '예의 바르게 박수쳐 응원해준다.'] },
+    '12월': { name: '따뜻한 캐롤', steps: ['크리스마스 캐롤을 함께 들어본다.', '간단한 가사를 익혀 따라 불러본다.', '율동을 만들어 친구들과 함께 한다.', '가족 앞에서 발표해본다.'] },
+    '1월': { name: '신나는 겨울 노래', steps: ['겨울 노래를 부른다.', '추위를 이기는 활기찬 율동을 만든다.', '친구들과 손잡고 함께 움직인다.', '겨울도 즐거울 수 있음을 느낀다.'] },
+    '2월': { name: '한 해의 음악회', steps: ['1년간 부른 노래 중 좋아하는 곡을 정한다.', '친구들 앞에서 발표할 곡을 연습한다.', '우리반 작은 음악회를 열어본다.', '서로의 발표에 큰 박수를 보낸다.'] }
+  },
+  'digital': {
+    '3월': { name: '우리어린이집 사진 탐험', steps: ['선생님이 어린이집 곳곳을 사진으로 찍어 보여준다.', '사진을 보며 어디인지 함께 찾아본다.', '친구들과 사진 속 장소를 직접 가본다.', '내가 좋아하는 장소를 사진으로 표시한다.'] },
+    '4월': { name: '봄 산책 사진일기', steps: ['선생님과 함께 봄 산책을 나간다.', '산책 중 발견한 봄의 모습을 사진으로 담는다.', '교실로 돌아와 시간 순서대로 사진을 본다.', '봄 산책 사진일기를 만들어 게시한다.'] },
+    '5월': { name: '돋보기 사진놀이', steps: ['교실 물건을 디지털 카메라로 다각도 촬영한다.', '확대된 사진을 보며 무엇인지 맞혀본다.', '같은 물건도 각도에 따라 다르게 보임을 안다.', '내가 찍은 사진을 친구들과 공유한다.'] },
+    '6월': { name: '우리동네 디지털 지도', steps: ['선생님과 동네 지도(로드뷰)를 함께 살펴본다.', '내가 가본 곳을 지도에서 찾아본다.', '동네 시설을 디지털로 표시해본다.', '우리동네 디지털 지도를 완성한다.'] },
+    '7월': { name: '식자재 사진 분류', steps: ['다양한 식자재를 사진으로 찍는다.', '같은 종류끼리 사진을 분류해본다.', '색깔별, 모양별로 다시 분류해본다.', '나만의 식자재 도감을 만들어본다.'] },
+    '8월': { name: '소리 녹음 놀이', steps: ['다양한 소리를 디지털 기기로 녹음한다.', '녹음한 소리를 들으며 무엇인지 맞혀본다.', '친구가 낸 소리도 녹음해서 들어본다.', '재미있는 소리들을 모아 작은 음반을 만든다.'] },
+    '9월': { name: '가을 사진 꾸미기', steps: ['선생님이 출력해 준 가을 사진을 받는다.', '사진 위에 그림이나 스티커로 꾸민다.', '디지털 도구로도 사진을 꾸며본다.', '꾸민 작품을 가족과 공유한다.'] },
+    '10월': { name: '구글 뮤직랩 자연소리', steps: ['구글 뮤직랩으로 다양한 소리를 들어본다.', '자연 악기 소리와 비슷한 음을 찾아본다.', '디지털로 간단한 멜로디를 만들어본다.', '친구들과 함께 디지털 음악을 만들어본다.'] },
+    '11월': { name: '내 목소리 녹음하기', steps: ['선생님이 들려주는 올바른 표현을 따라 한다.', '내 목소리를 녹음해 들어본다.', '바르게 말했는지 함께 평가해본다.', '점점 나아지는 발음을 확인한다.'] },
+    '12월': { name: '겨울 사진 작품', steps: ['선생님이 출력해 준 겨울 사진을 받는다.', '눈, 따뜻한 옷, 겨울 풍경을 자유롭게 꾸민다.', '디지털로도 겨울 작품을 만들어본다.', '완성한 작품을 교실에 전시한다.'] },
+    '1월': { name: '겨울풍경 영상 보기', steps: ['세계 여러 곳의 겨울 영상을 함께 본다.', '영상 속 겨울과 우리 겨울을 비교해본다.', '가장 인상 깊은 장면을 이야기한다.', '내가 본 겨울을 영상이나 그림으로 표현한다.'] },
+    '2월': { name: '하나뿐인 동화책', steps: ['1년간 좋아한 동화책을 떠올려본다.', '내가 좋아하는 부분만 모아 새 책을 구상한다.', '디지털 도구로 그림과 글을 편집한다.', '하나뿐인 나만의 동화책을 완성한다.'] }
+  },
+  'cooking': {
+    '3월': { name: '식자재 친구 인사', steps: ['오늘의 식자재를 자세히 살펴본다.', '만져보고 냄새 맡으며 식자재와 친해진다.', '안전하게 다루는 방법을 배운다.', '식자재 그림을 그려 친구들과 공유한다.'] },
+    '4월': { name: '봄 식자재 탐색', steps: ['봄에 만날 수 있는 채소를 알아본다.', '냉이, 달래, 봄동을 직접 만져본다.', '맛과 향을 안전하게 경험해본다.', '봄 식자재로 간단한 비빔밥을 만들어본다.'] },
+    '5월': { name: '가족과 만드는 음식', steps: ['가족이 좋아하는 음식을 떠올려본다.', '함께 만들 수 있는 간단한 요리를 정한다.', '재료를 준비하고 가족과 함께 만든다.', '요리 후 가족과 맛있게 나눠 먹는다.'] },
+    '6월': { name: '우리동네 음식', steps: ['우리 동네의 유명한 음식을 알아본다.', '동네 음식의 재료를 살펴본다.', '간단한 동네 음식을 만들어본다.', '동네 음식을 소개하는 책을 만든다.'] },
+    '7월': { name: '식자재 분류 놀이', steps: ['다양한 식자재를 한 곳에 모은다.', '채소, 과일, 곡식 등으로 분류해본다.', '색깔, 모양, 크기로도 분류해본다.', '분류한 식자재로 요리 계획을 세운다.'] },
+    '8월': { name: '시원한 여름 음식', steps: ['더위를 식혀줄 음식을 알아본다.', '수박, 오이, 미숫가루 등을 준비한다.', '안전하게 시원한 음식을 만들어본다.', '친구들과 함께 시원하게 먹는다.'] },
+    '9월': { name: '가을 수확 잔치', steps: ['가을에 수확하는 농산물을 알아본다.', '쌀, 사과, 고구마 등을 직접 만져본다.', '간단한 가을 음식을 만들어본다.', '풍성한 가을에 감사하며 함께 먹는다.'] },
+    '10월': { name: '예쁜 도시락 만들기', steps: ['도시락에 담을 음식을 구상해본다.', '재료를 색깔별로 준비한다.', '예쁘게 모양을 내어 도시락을 꾸민다.', '친구와 함께 예쁜 도시락을 나눈다.'] },
+    '11월': { name: '식사 예절 익히기', steps: ['식사할 때 지켜야 할 예절을 이야기 나눈다.', '바른 자세로 앉기, 골고루 먹기를 연습한다.', '식사 중 예의 바르게 대화하는 연습을 한다.', '식사 후 정리하는 습관을 들인다.'] },
+    '12월': { name: '따뜻한 음식 나눔', steps: ['추운 겨울에 어울리는 따뜻한 음식을 알아본다.', '간단한 따뜻한 간식을 만들어본다.', '이웃이나 가족과 음식을 나눠 먹는다.', '나눔의 따뜻함을 느껴본다.'] },
+    '1월': { name: '새해 떡국', steps: ['떡국에 들어가는 재료를 알아본다.', '떡과 다른 재료들을 직접 만져본다.', '간단한 떡국 만들기를 도와본다.', '떡국을 먹으며 한 살 더 자랐음을 느낀다.'] },
+    '2월': { name: '내가 만든 요리', steps: ['1년간 만든 요리 중 좋아하는 것을 정한다.', '필요한 재료를 스스로 준비해본다.', '배운 대로 요리를 완성해본다.', '가족에게 자랑스럽게 대접한다.'] }
+  },
+  'family': {
+    '3월': { name: '우리 가족 소개', steps: ['우리 가족 사진을 어린이집에 가져와 본다.', '가족 한 명 한 명을 친구들에게 소개한다.', '가족이 좋아하는 것, 잘하는 것을 이야기한다.', '친구의 가족 이야기도 잘 들어준다.'] },
+    '4월': { name: '가족과 봄나들이', steps: ['주말에 가족과 함께 봄나들이 계획을 세운다.', '나들이에서 발견한 봄을 사진으로 담는다.', '월요일에 친구들에게 사진을 보여준다.', '가족과의 즐거운 시간을 이야기 나눈다.'] },
+    '5월': { name: '가족 사랑 행사', steps: ['어버이날, 가정의 달의 의미를 이야기한다.', '가족에게 전할 사랑의 표현을 준비한다.', '카네이션, 카드를 정성껏 만든다.', '가족에게 직접 전달하며 마음을 나눈다.'] },
+    '6월': { name: '가족과 동네 산책', steps: ['가족과 함께 동네 산책 계획을 세운다.', '동네에서 만난 사람, 발견한 것을 기억한다.', '산책 중 가족 사진을 찍어본다.', '가족과 함께한 산책을 그림일기로 남긴다.'] },
+    '7월': { name: '가족과 요리하는 날', steps: ['가족과 함께 만들 요리를 정한다.', '내가 도울 수 있는 일을 찾아본다.', '안전하게 가족을 도우며 요리한다.', '가족과 함께 만든 음식을 즐긴다.'] },
+    '8월': { name: '가족 소리 모음', steps: ['가족 각자의 목소리를 떠올려본다.', '가족이 자주 하는 말을 적어본다.', '가족 목소리를 녹음해서 들어본다.', '가족의 사랑이 담긴 말을 모은다.'] },
+    '9월': { name: '추석 가족 행사', steps: ['추석에 가족, 친척과 만나는 일을 이야기한다.', '큰절 연습, 송편 만들기를 미리 해본다.', '가족과 함께 명절을 보낸다.', '명절 후 친구들과 경험을 나눈다.'] },
+    '10월': { name: '가족 작품 만들기', steps: ['가족과 함께 만들 작품을 구상한다.', '각자의 역할을 나누어 정한다.', '협동하여 하나의 작품을 완성한다.', '가족 작품을 어린이집에 전시한다.'] },
+    '11월': { name: '가족과 대화하는 시간', steps: ['가족과 매일 대화하는 시간을 정한다.', '오늘 있었던 일을 이야기한다.', '가족의 이야기도 끝까지 들어준다.', '대화 후 따뜻한 마음을 느낀다.'] },
+    '12월': { name: '한 해 감사 카드', steps: ['1년 동안 가족이 해준 일을 떠올린다.', '감사한 일을 그림과 글로 표현한다.', '예쁘게 카드를 꾸며 가족에게 전한다.', '가족과 함께 한 해를 돌아본다.'] },
+    '1월': { name: '새해 가족 약속', steps: ['새해에 가족과 함께 할 일을 정한다.', '나의 새해 다짐을 가족과 나눈다.', '가족도 함께 새해 다짐을 한다.', '약속을 적어 잘 보이는 곳에 붙인다.'] },
+    '2월': { name: '가족과 함께한 1년', steps: ['1년 동안 가족과 함께한 사진을 모은다.', '가장 기억에 남는 순간을 이야기한다.', '가족 앨범을 만들어본다.', '가족에게 사랑을 전한다.'] }
+  },
+  'literacy': {
+    '3월': { name: '내 이름 익히기', steps: ['내 이름의 글자를 자세히 살펴본다.', '이름을 손가락으로 따라 써본다.', '친구들 이름과 비교해본다.', '이름 카드를 만들어 사물함에 붙인다.'] },
+    '4월': { name: '봄 사물 세기', steps: ['봄에 만날 수 있는 사물을 모아본다.', '꽃, 잎, 돌멩이를 1, 2, 3 세어본다.', '많은 것과 적은 것을 비교해본다.', '봄 사물의 수를 그림으로 표현한다.'] },
+    '5월': { name: '가족 이름 쓰기', steps: ['우리 가족의 이름을 떠올려본다.', '엄마, 아빠, 형제 이름을 따라 써본다.', '가족 이름이 쓰인 카드를 만든다.', '가족에게 카드를 선물한다.'] },
+    '6월': { name: '동네 표지판 읽기', steps: ['동네에서 본 표지판을 떠올려본다.', '글자와 그림이 함께 있는 표지판을 살펴본다.', '횡단보도, 화장실 등의 의미를 안다.', '내가 만든 표지판을 그려본다.'] },
+    '7월': { name: '식자재 분류와 세기', steps: ['다양한 식자재를 모아본다.', '같은 것끼리 모아 수를 세어본다.', '많은 식자재와 적은 식자재를 비교한다.', '분류한 결과를 그림으로 표현한다.'] },
+    '8월': { name: '재미있는 의성어', steps: ['다양한 의성어가 담긴 책을 본다.', '"퐁당퐁당", "콸콸" 등을 따라 한다.', '소리 단어로 짧은 이야기를 만든다.', '친구들 앞에서 소리 단어를 발표한다.'] },
+    '9월': { name: '가을 열매 수학', steps: ['도토리, 밤 등 가을 열매를 모은다.', '같은 종류끼리 분류하고 수를 센다.', '가장 많은 열매와 가장 적은 열매를 찾는다.', '가을 열매로 패턴을 만들어본다.'] },
+    '10월': { name: '노랫말 따라 읽기', steps: ['좋아하는 동요의 가사를 살펴본다.', '글자 하나하나를 손가락으로 짚어 읽는다.', '아는 글자를 친구들에게 알려준다.', '노래를 부르며 글자를 익힌다.'] },
+    '11월': { name: '고운 말 익히기', steps: ['친구에게 기분 좋은 말을 떠올려본다.', '"고마워", "미안해"를 정확하게 발음한다.', '친구가 말할 때 끝까지 듣는 연습을 한다.', '하루 동안 고운 말 사용 약속을 지킨다.'] },
+    '12월': { name: '마음 카드 쓰기', steps: ['고마운 사람을 떠올려본다.', '카드에 짧은 글을 써본다.', '글자가 어려우면 그림으로 마음을 표현한다.', '카드를 직접 전달한다.'] },
+    '1월': { name: '새해 달력 만들기', steps: ['1년이 12개월임을 알아본다.', '내가 좋아하는 달을 골라본다.', '달력에 중요한 날을 표시해본다.', '내가 만든 달력을 가족과 공유한다.'] },
+    '2월': { name: '우리만의 책 만들기', steps: ['1년간 가장 즐거웠던 일을 떠올린다.', '글과 그림으로 이야기를 표현한다.', '친구들 작품을 모아 한 권의 책으로 묶는다.', '완성된 책을 가족에게 자랑한다.'] }
+  }
+};
+
+/* ==========================================
+   상태 관리
+========================================== */
+const state = {
+  selectedKeywords: [],   // 선택된 키워드 ID 배열
+  selectedAge: null,      // 선택된 연령
+  selectedProgram: null,  // 선택된 프로그램명
+  programs: [],           // 추천된 프로그램명 목록
+  narrative: null,        // 목표·활동 서술 데이터
+  annualPlan: []          // 연간 계획 데이터
+};
+
+/* ==========================================
+   1단계: 키워드 선택
+========================================== */
+function renderKeywords() {
+  const grid = document.getElementById('keyword-grid');
+  grid.innerHTML = KEYWORDS.map(k => `
+    <div class="keyword-card" data-id="${k.id}" onclick="toggleKeyword('${k.id}')">
+      <div class="check-mark">✓</div>
+      <div class="keyword-icon">${k.icon}</div>
+      <div class="keyword-name">${k.name}</div>
+    </div>
+  `).join('');
+}
+
+function toggleKeyword(id) {
+  const card = document.querySelector(`.keyword-card[data-id="${id}"]`);
+  if (card.classList.contains('disabled')) return;
+
+  const idx = state.selectedKeywords.indexOf(id);
+  if (idx > -1) {
+    // 이미 선택됨 → 해제
+    state.selectedKeywords.splice(idx, 1);
+    card.classList.remove('selected');
+  } else {
+    // 선택 추가 (최대 3개)
+    if (state.selectedKeywords.length >= 3) return;
+    state.selectedKeywords.push(id);
+    card.classList.add('selected');
+  }
+
+  updateKeywordUI();
+}
+
+function updateKeywordUI() {
+  const count = state.selectedKeywords.length;
+  document.getElementById('counter-num').textContent = count;
+  document.getElementById('btn-step1-next').disabled = count === 0;
+
+  // 3개 선택 시 나머지 비활성화
+  document.querySelectorAll('.keyword-card').forEach(card => {
+    if (count >= 3 && !card.classList.contains('selected')) {
+      card.classList.add('disabled');
+    } else {
+      card.classList.remove('disabled');
+    }
+  });
+}
+
+/* ==========================================
+   2단계: 키워드 확인
+========================================== */
+function renderConfirmKeywords() {
+  const container = document.getElementById('confirm-keywords');
+  container.innerHTML = state.selectedKeywords.map(id => {
+    const k = KEYWORDS.find(x => x.id === id);
+    return `<div class="confirm-keyword">${k.icon} ${k.name}</div>`;
+  }).join('');
+}
+
+/* ==========================================
+   3단계: 연령 선택
+========================================== */
+document.querySelectorAll('.age-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.age-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    state.selectedAge = card.dataset.age;
+    document.getElementById('btn-step3-next').disabled = false;
+  });
+});
+
+/* ==========================================
+   4단계: 프로그램명 추천
+   (v0.1: 미리 정의된 템플릿 매칭)
+   향후 v0.2: Claude API 호출로 변경
+========================================== */
+function generatePrograms() {
+  const ageLabel = AGE_LABELS[state.selectedAge];
+  const isInfant = ['0-1', '2'].includes(state.selectedAge);
+  const ageGroup = isInfant ? '영아' : '유아';
+
+  const keywordNames = state.selectedKeywords.map(id =>
+    KEYWORDS.find(k => k.id === id).name
+  );
+
+  // 키워드 조합으로 프로그램명 생성 (시뮬레이션)
+  const k1 = keywordNames[0] || '';
+  const k2 = keywordNames[1] || '';
+  const k3 = keywordNames[2] || '';
+
+  state.programs = [
+    `${ageGroup}반 ${k1} ${k2 ? '·'+k2 : ''} 통합놀이 프로그램`.trim(),
+    `${k1} 기반 ${ageGroup} 발달 지원 프로그램`,
+    `${ageGroup} ${k1}${k2 ? '·'+k2 : ''} 연계 활동 프로그램`,
+    `${k1} 중심의 ${ageGroup} 일상놀이 프로그램`,
+  ];
+
+  // 키워드별 특화 프로그램 추가
+  if (state.selectedKeywords.includes('sense')) {
+    state.programs.unshift(`${ageGroup}반 감각발달 ${k2 || '오감놀이'} 가정연계 프로그램`);
+  }
+  if (state.selectedKeywords.includes('social')) {
+    state.programs.unshift(`${ageGroup} 사회성 증진 ${k2 || '협동놀이'} 활동 프로그램`);
+  }
+  if (state.selectedKeywords.includes('emotion')) {
+    state.programs.unshift(`${ageGroup}반 강점리터러시 교육프로그램`);
+  }
+
+  // 최대 5개로 제한
+  state.programs = state.programs.slice(0, 5);
+
+  // UI 업데이트
+  document.getElementById('step4-keywords').textContent = keywordNames.join(', ');
+  document.getElementById('step4-age').textContent = ageLabel;
+
+  const list = document.getElementById('program-list');
+  list.innerHTML = state.programs.map((name, i) => `
+    <div class="program-card" data-idx="${i}" onclick="selectProgram(${i})">
+      <div class="program-num">${i+1}</div>
+      <div class="program-name">${name}</div>
+    </div>
+  `).join('');
+}
+
+function selectProgram(idx) {
+  document.querySelectorAll('.program-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.program-card[data-idx="${idx}"]`).classList.add('selected');
+  state.selectedProgram = state.programs[idx];
+  document.getElementById('btn-step4-next').disabled = false;
+}
+
+/* ==========================================
+   5단계: 목표·활동 서술 생성
+   (v0.1: 템플릿 기반 / 향후 Claude API)
+   - 프로그램 개요 제거
+   - 목적: 연령발달 필요성 + 활동내용 상세
+   - 모든 어미 ~한다 통일
+========================================== */
+
+// 연령별 발달 특성 (표준보육과정·누리과정 기반)
+const AGE_DEVELOPMENT = {
+  '0-1': {
+    feature: '0~1세 영아는 신체적 접촉과 감각자극을 통해 세상을 인식하며, 양육자와의 안정적 애착 형성이 전인적 발달의 토대가 되는 시기이다',
+    need: '오감을 통한 풍부한 감각경험과 양육자와의 정서적 교감이 뇌 발달과 사회·정서 발달의 결정적 기초',
+    activityStyle: '신체접촉 활동, 감각자극 놀이, 일상 속 상호작용을 중심으로 한 가정연계',
+    method: '신체접촉과 감각자극 중심의 일상놀이로 진행하며, 영아의 반응을 면밀히 관찰하여 개별 속도에 맞추어 활동을 조절한다'
+  },
+  '2': {
+    feature: '2세 영아는 자율성이 발달하며 스스로 시도하고 탐색하는 능동적 주체로 성장하는 시기이며, 언어 폭발기를 맞이하여 어휘와 표현이 급격히 확장된다',
+    need: '안전한 환경 속에서의 자기주도적 탐색 경험과 풍부한 언어 자극이 자아개념과 의사소통 능력 발달의 핵심',
+    activityStyle: '일상 탐색활동과 디지털도구를 활용한 확장 놀이를 통한 자율적 경험',
+    method: '영아의 흥미와 호기심을 따라가며 일상놀이와 디지털 놀이를 결합하여 진행하고, 영아 주도의 탐색을 충분히 지원한다'
+  },
+  '3': {
+    feature: '3세 유아는 또래와의 관계 형성이 본격적으로 시작되며, 자기조절 능력과 사회적 규칙에 대한 이해가 발달하는 시기이다',
+    need: '협동놀이와 신체활동을 통한 자기조절·또래관계·긍정적 정서의 통합적 발달이 사회성 형성의 기초',
+    activityStyle: '협동놀이 중심의 신체활동을 통한 사회성 증진 활동',
+    method: '활동 시 발생할 수 있는 자기조절·또래관계·긍정적 정서 상황에 대해 사전에 이야기를 나누고, 유아가 스스로 해결책을 모색하도록 지원한다'
+  },
+  '4': {
+    feature: '4세 유아는 자아인식이 명확해지고 자신의 강점과 흥미를 인식하기 시작하며, 또래·가족·지역사회로 관계망이 확장되는 시기이다',
+    need: '자기 강점에 대한 긍정적 인식과 타인 강점에 대한 존중을 통한 긍정정서와 자존감 형성이 핵심 과업',
+    activityStyle: '강점 인식·공유·활용을 단계적으로 경험하는 리터러시 활동',
+    method: '나의 강점인식 → 강점공유 → 강점활용 → 긍정정서 공유의 4단계로 점진적으로 진행하며, 유아의 강점을 시각화하고 게시하여 일상에서 활용한다'
+  },
+  '5': {
+    feature: '만 5세 유아는 초등학교 진학을 앞두고 학습준비도와 사회적 적응력을 형성해야 하는 전이기로, 새로운 환경에 대한 기대와 불안이 공존하는 시기이다',
+    need: '초등학교 생활에 대한 긍정적 인식과 기초학습 습관·자기관리 능력의 점진적 형성이 성공적 학교적응의 토대',
+    activityStyle: '초등학교 시설·교직원·교과서·생활습관을 단계적으로 탐색하는 적응 활동',
+    method: '유치원과 초등학교의 차이점을 인식하고, 초등 교과서·시간표·물건정리 등 구체적 학교생활 요소를 직접 경험해보며 자신감을 형성한다'
+  }
+};
+
+function generateNarrative() {
+  const ageLabel = AGE_LABELS[state.selectedAge];
+  const keywordNames = state.selectedKeywords.map(id =>
+    KEYWORDS.find(k => k.id === id).name
+  );
+  const isInfant = ['0-1', '2'].includes(state.selectedAge);
+  const dev = AGE_DEVELOPMENT[state.selectedAge];
+
+  // 활동 내용 상세 서술 (키워드 기반)
+  const activityDetail = generateActivityDetail(keywordNames, isInfant, state.selectedAge);
+
+  state.narrative = {
+    programName: state.selectedProgram,
+    age: ageLabel,
+    keywords: keywordNames,
+
+    // 목적: 연령발달 필요성 + 활동내용 상세 (~한다 종결)
+    purpose: `${dev.feature}. 따라서 이 시기에는 ${dev.need}이 된다. 본 프로그램은 ${ageLabel}의 이러한 발달적 요구를 반영하여 ${keywordNames.join(', ')} 영역을 통합적으로 경험할 수 있도록 구성되었다. ${activityDetail} 이를 통해 ${ageLabel} 영유아가 발달적으로 적합한 경험 속에서 전인적 성장을 이루도록 지원한다.`,
+
+    // 목표: ~한다 종결
+    objectives: generateObjectives(keywordNames, isInfant, ageLabel),
+
+    // 활동 운영 방식: ~한다 종결
+    activities: isInfant
+      ? `매월 2가지 주제 활동을 통해 ${keywordNames.join(', ')} 영역을 통합적으로 경험한다. ${dev.activityStyle}을 중심으로 가정과 긴밀히 연계하여 진행한다. ${dev.method}.`
+      : `매월 1가지 주제 활동을 통해 ${keywordNames.join(', ')} 영역을 심화 경험한다. ${dev.activityStyle}으로 운영하며, 자기조절·또래관계·긍정적 정서 형성을 함께 도모한다. ${dev.method}.`,
+
+    // 평가: ~한다 종결
+    method: `매월 표준보육과정 및 누리과정과 연계하여 진행하며, 활동 후 교사 관찰 기록과 부모 피드백을 수집하여 다음 활동에 반영한다. 학기별 1회 종합평가를 통해 프로그램의 효과성을 검토하고 개선점을 도출한다.`
+  };
+
+  renderNarrative();
+}
+
+// 키워드별 활동내용 상세 서술 생성
+function generateActivityDetail(keywords, isInfant, age) {
+  const k1 = keywords[0];
+  const k2 = keywords[1];
+  const k3 = keywords[2];
+
+  // 키워드별 구체적 활동 예시
+  const activityMap = {
+    '자연생태': isInfant ? '계절별 자연물 탐색, 산책을 통한 자연 관찰' : '계절별 자연 관찰, 자연물 활용 놀이, 생태환경 보호 활동',
+    '오감놀이': isInfant ? '시각·청각·촉각·미각·후각을 활용한 감각자극 놀이' : '오감을 통한 통합 탐색활동, 감각재료 놀이',
+    '디지털': isInfant ? '사진·영상을 활용한 일상 탐색의 확장' : '디지털도구를 활용한 표현·기록·소통 활동',
+    '기본생활습관': '일상생활 속 자조 능력 형성 활동, 위생·식사·정리정돈 습관 형성',
+    '그림책': '그림책 읽기와 연계한 통합활동, 이야기 나누기와 표현활동',
+    '예술표현': '미술·음률을 통한 자기표현 활동',
+    '음악·신체': isInfant ? '노래와 율동을 활용한 신체 움직임' : '음악에 맞춘 신체표현과 협응 활동',
+    '사회성': isInfant ? '또래·교사와의 긍정적 상호작용 경험' : '협동놀이를 통한 자기조절·또래관계 형성 활동',
+    '정서·강점': '나의 강점 인식과 또래 강점 발견을 통한 긍정정서 함양 활동',
+    '요리·식습관': '식자재 탐색과 간단한 요리 경험을 통한 건강한 식습관 형성',
+    '가정연계': '가정과 연계한 부모-자녀 공동 활동',
+    '문해·수': isInfant ? '일상 속 문자·숫자 친숙화 경험' : '놀이를 통한 기초 문해·수 개념 형성'
+  };
+
+  const detail1 = activityMap[k1] || `${k1} 영역 활동`;
+  const detail2 = k2 ? activityMap[k2] || `${k2} 영역 활동` : null;
+  const detail3 = k3 ? activityMap[k3] || `${k3} 영역 활동` : null;
+
+  let result = `구체적으로 ${detail1}을(를) 중심축으로 하여`;
+  if (detail2) result += `, ${detail2}을(를) 결합하고`;
+  if (detail3) result += `, ${detail3}까지 확장하여`;
+  result += ` 매월 주제별 활동을 진행한다.`;
+
+  return result;
+}
+
+// 목표 생성 (~한다 종결 통일)
+function generateObjectives(keywords, isInfant, ageLabel) {
+  const k1 = keywords[0];
+  const k2 = keywords[1];
+  const k3 = keywords[2];
+
+  const objectives = [];
+
+  // 첫 번째 목표: 핵심 키워드 역량
+  objectives.push(`${k1} 영역의 기초 역량과 흥미를 함양한다.`);
+
+  // 두 번째 목표: 통합 경험
+  if (k2) {
+    objectives.push(`${k1}과(와) ${k2}을(를) 통합적으로 경험하여 균형 있는 발달을 도모한다.`);
+  } else {
+    objectives.push(`${k1} 활동을 일상생활과 연계하여 자연스럽게 경험한다.`);
+  }
+
+  // 세 번째 목표: 확장
+  if (k3) {
+    objectives.push(`${k3} 경험을 통해 활동 영역을 확장하고 풍부한 놀이환경을 조성한다.`);
+  } else {
+    objectives.push(`${ageLabel}의 발달특성에 맞는 놀이중심 활동에 적극 참여한다.`);
+  }
+
+  // 네 번째 목표: 사회·정서
+  if (isInfant) {
+    objectives.push(`교사 및 가족과의 안정적 상호작용을 통해 정서적 안정감을 경험한다.`);
+  } else {
+    objectives.push(`또래 및 교사와의 긍정적 상호작용을 통해 사회·정서 발달을 이룬다.`);
+  }
+
+  return objectives;
+}
+
+function renderNarrative() {
+  const n = state.narrative;
+  const container = document.getElementById('doc-narrative');
+  container.innerHTML = `
+    <div class="doc-program-title">${n.programName}</div>
+
+    <div class="doc-subtitle">▶ 프로그램 목표</div>
+    <div class="doc-text">
+      ${n.objectives.map((o, i) => `${i+1}. ${o}`).join('<br>')}
+    </div>
+
+    <div class="doc-subtitle">▶ 프로그램 목적</div>
+    <div class="doc-text">${n.purpose}</div>
+  `;
+}
+
+/* ==========================================
+   6단계: 연간표 생성
+   - 주제 → 놀이 이름 (활동 대표)
+   - 상세설명 = 목표 표 + 놀이 단계
+========================================== */
+function generateAnnualPlan() {
+  const isInfant = ['0-1', '2'].includes(state.selectedAge);
+  const selectedKws = state.selectedKeywords; // 키워드 ID 배열
+  const k1 = selectedKws[0];
+  const k2 = selectedKws[1];
+
+  // 영아: 월 2개 활동 (첫 번째 키워드, 두 번째 키워드)
+  // 유아: 월 1개 활동 (첫 번째 키워드 중심)
+  state.annualPlan = MONTHS.map(month => {
+    if (isInfant && k2) {
+      // 영아 + 키워드 2개 이상 → 월 2개 활동
+      const play1 = KEYWORD_PLAYS[k1]?.[month];
+      const play2 = KEYWORD_PLAYS[k2]?.[month];
+      const goals1 = KEYWORD_DOMAINS[k1]?.[month] || [];
+      const goals2 = KEYWORD_DOMAINS[k2]?.[month] || [];
+
+      return {
+        month,
+        twoActivities: true,
+        activity1: {
+          name: play1?.name || `${month} 활동`,
+          goals: goals1,
+          steps: play1?.steps || []
+        },
+        activity2: {
+          name: play2?.name || `${month} 확장 활동`,
+          goals: goals2,
+          steps: play2?.steps || []
+        }
+      };
+    } else {
+      // 유아 또는 영아 + 키워드 1개 → 월 1개 활동
+      const play = KEYWORD_PLAYS[k1]?.[month];
+      // 모든 선택 키워드의 영역을 통합한 목표 표
+      const allGoals = [];
+      selectedKws.forEach(kid => {
+        const g = KEYWORD_DOMAINS[kid]?.[month];
+        if (g && g.length > 0) {
+          allGoals.push(g[0]); // 각 키워드에서 첫 번째 영역 가져오기
+        }
+      });
+
+      return {
+        month,
+        twoActivities: false,
+        activity: {
+          name: play?.name || `${month} 활동`,
+          goals: allGoals,
+          steps: play?.steps || []
+        }
+      };
+    }
+  });
+
+  renderAnnualTable();
+}
+
+function renderAnnualTable() {
+  const container = document.getElementById('annual-table-container');
+  const theme = getAgeTheme();
+
+  // 동적 스타일 (연령별 색상 적용)
+  const dynamicStyle = `
+    <style>
+      .annual-table-wrap-${state.selectedAge} {
+        background: linear-gradient(135deg, #ffffff 0%, ${theme.subjectBg} 100%);
+        border-radius: 14px;
+        padding: 6px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 0 0 1px ${theme.border}33;
+        margin-bottom: 24px;
+      }
+      .annual-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 13px;
+        background: #ffffff;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .annual-table thead th.title-row {
+        background: linear-gradient(135deg, ${theme.headerBg} 0%, ${theme.headerBg2} 100%);
+        text-align: center;
+        padding: 18px;
+        font-weight: 700;
+        font-size: 18px;
+        color: ${theme.accent};
+        letter-spacing: 0.04em;
+        border: none;
+        font-family: 'Noto Serif KR', serif;
+      }
+      .annual-table th, .annual-table td {
+        border-bottom: 1px solid ${theme.border}55;
+        border-right: 1px solid ${theme.border}33;
+        padding: 12px;
+        vertical-align: middle;
+      }
+      .annual-table th:last-child, .annual-table td:last-child {
+        border-right: none;
+      }
+      .annual-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .annual-table th {
+        background: ${theme.headerBg};
+        color: ${theme.accent};
+        font-weight: 700;
+        text-align: center;
+        font-size: 13px;
+        padding: 13px 10px;
+        letter-spacing: 0.03em;
+      }
+      .annual-table td.month-cell {
+        background: ${theme.monthBg};
+        text-align: center;
+        font-weight: 700;
+        color: ${theme.accent};
+        width: 60px;
+        font-size: 15px;
+        font-family: 'Noto Serif KR', serif;
+      }
+      .annual-table td.subject-cell {
+        text-align: center;
+        font-weight: 600;
+        width: 130px;
+        color: ${theme.accent};
+        background: ${theme.subjectBg};
+        font-size: 13px;
+        padding: 12px 8px;
+        line-height: 1.5;
+      }
+      .annual-table td.goal-cell {
+        width: 200px;
+        padding: 8px;
+        background: #ffffff;
+        vertical-align: middle;
+      }
+      .annual-table td.detail-cell {
+        line-height: 1.7;
+        padding: 14px 16px;
+        vertical-align: middle;
+        background: #ffffff;
+      }
+      .goal-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: ${theme.goalBg};
+      }
+      .goal-table tr {
+        border-bottom: 1px solid ${theme.border}44;
+      }
+      .goal-table tr:last-child {
+        border-bottom: none;
+      }
+      .goal-table td {
+        border: none;
+        padding: 8px 11px;
+        line-height: 1.55;
+      }
+      .goal-table td.goal-label {
+        background: ${theme.goalLabelBg};
+        font-weight: 700;
+        color: ${theme.accent};
+        width: 70px;
+        text-align: center;
+        white-space: nowrap;
+        font-size: 11.5px;
+      }
+      .goal-table td.goal-content {
+        background: ${theme.goalBg};
+        color: #444;
+        font-size: 12px;
+      }
+      .play-steps {
+        margin: 0;
+        padding-left: 22px;
+        line-height: 1.8;
+      }
+      .play-steps li {
+        margin-bottom: 6px;
+        color: #333;
+        font-size: 13px;
+      }
+      .play-steps li::marker {
+        color: ${theme.accent};
+        font-weight: 700;
+      }
+      .age-badge {
+        display: inline-block;
+        background: ${theme.headerBg};
+        color: ${theme.accent};
+        padding: 5px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+    </style>
+  `;
+
+  let tableHTML = dynamicStyle + `
+    <div style="text-align:center; margin-bottom:14px;">
+      <span class="age-badge">${AGE_LABELS[state.selectedAge]} · ${theme.name} 테마</span>
+    </div>
+    <div class="annual-table-wrap-${state.selectedAge}">
+      <table class="annual-table">
+        <thead>
+          <tr><th class="title-row" colspan="4">${state.narrative.programName}</th></tr>
+          <tr>
+            <th style="width:60px;">월</th>
+            <th style="width:130px;">활동(놀이) 이름</th>
+            <th style="width:200px;">활동 영역</th>
+            <th>놀이 설명</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  state.annualPlan.forEach(row => {
+    if (row.twoActivities) {
+      tableHTML += `
+        <tr>
+          <td class="month-cell" rowspan="2">${row.month}</td>
+          <td class="subject-cell">${row.activity1.name}</td>
+          <td class="goal-cell">${renderGoalTable(row.activity1.goals)}</td>
+          <td class="detail-cell">${renderPlaySteps(row.activity1.steps)}</td>
+        </tr>
+        <tr>
+          <td class="subject-cell">${row.activity2.name}</td>
+          <td class="goal-cell">${renderGoalTable(row.activity2.goals)}</td>
+          <td class="detail-cell">${renderPlaySteps(row.activity2.steps)}</td>
+        </tr>
+      `;
+    } else {
+      tableHTML += `
+        <tr>
+          <td class="month-cell">${row.month}</td>
+          <td class="subject-cell">${row.activity.name}</td>
+          <td class="goal-cell">${renderGoalTable(row.activity.goals)}</td>
+          <td class="detail-cell">${renderPlaySteps(row.activity.steps)}</td>
+        </tr>
+      `;
+    }
+  });
+
+  tableHTML += '</tbody></table></div>';
+  container.innerHTML = tableHTML;
+}
+
+// 목표 표 렌더링 (한 컬럼)
+function renderGoalTable(goals) {
+  let html = '<table class="goal-table">';
+  goals.forEach(goal => {
+    const [label, content] = goal.split(': ');
+    html += `
+      <tr>
+        <td class="goal-label">${label}</td>
+        <td class="goal-content">${content || ''}</td>
+      </tr>
+    `;
+  });
+  html += '</table>';
+  return html;
+}
+
+// 놀이 단계 렌더링 (한 컬럼)
+function renderPlaySteps(steps) {
+  if (!steps || steps.length === 0) return '';
+  return `<ul class="play-steps">${steps.map(s => `<li>${s}</li>`).join('')}</ul>`;
+}
+
+// 호환성용 (기존 함수 유지)
+function renderActivityDetail(activity) {
+  return renderGoalTable(activity.goals) + renderPlaySteps(activity.steps);
+}
+
+/* ==========================================
+   단계 이동
+========================================== */
+function goToStep(n) {
+  // 단계별 트리거
+  if (n === 2) renderConfirmKeywords();
+  if (n === 4) generatePrograms();
+  if (n === 5) generateNarrative();
+  if (n === 6) generateAnnualPlan();
+
+  // 화면 전환
+  document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+  document.getElementById(`step-${n}`).classList.add('active');
+
+  // 진행 표시 업데이트
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById(`progress-${i}`);
+    el.classList.remove('active', 'completed');
+    if (i < n) el.classList.add('completed');
+    else if (i === n) el.classList.add('active');
+  }
+
+  // 스크롤 상단으로
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ==========================================
+   리셋
+========================================== */
+function resetAll() {
+  state.selectedKeywords = [];
+  state.selectedAge = null;
+  state.selectedProgram = null;
+  state.programs = [];
+  state.narrative = null;
+  state.annualPlan = [];
+
+  document.querySelectorAll('.keyword-card').forEach(c => {
+    c.classList.remove('selected', 'disabled');
+  });
+  document.querySelectorAll('.age-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('counter-num').textContent = '0';
+  document.getElementById('btn-step1-next').disabled = true;
+  document.getElementById('btn-step3-next').disabled = true;
+  document.getElementById('btn-step4-next').disabled = true;
+
+  goToStep(1);
+}
+
+/* ==========================================
+   📄 Word 다운로드 (docx 라이브러리)
+========================================== */
+async function downloadWord() {
+  try {
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel,
+            Table, TableRow, TableCell, WidthType, AlignmentType,
+            BorderStyle, ShadingType } = docx;
+
+    const isInfant = ['0-1', '2'].includes(state.selectedAge);
+    const n = state.narrative;
+
+    // 연령별 색상 테마 (# 제거한 6자리 hex)
+    const theme = getAgeTheme();
+    const hex = (c) => c.replace('#', '').toUpperCase();
+    const C_HEADER = hex(theme.headerBg);
+    const C_MONTH = hex(theme.monthBg);
+    const C_SUBJECT = hex(theme.subjectBg);
+    const C_GOAL = hex(theme.goalBg);
+    const C_ACCENT = hex(theme.accent);
+
+    // 표 행 생성
+    const tableRows = [];
+
+    // 표 제목 행
+    tableRows.push(new TableRow({
+      children: [new TableCell({
+        columnSpan: 4,
+        shading: { fill: C_HEADER },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: n.programName, bold: true, size: 28, color: C_ACCENT })]
+        })]
+      })]
+    }));
+
+    // 헤더 행 (4컬럼)
+    tableRows.push(new TableRow({
+      tableHeader: true,
+      children: ['월', '활동(놀이) 이름', '활동 영역', '놀이 설명'].map(text => new TableCell({
+        shading: { fill: C_HEADER },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text, bold: true, color: C_ACCENT })]
+        })]
+      }))
+    }));
+
+    // 키워드/목표 셀의 내용 (목표 표만)
+    function buildGoalCellChildren(goals) {
+      return goals.map(goal => {
+        const [label, content] = goal.split(': ');
+        return new Paragraph({
+          children: [
+            new TextRun({ text: `[${label}] `, bold: true, color: C_ACCENT }),
+            new TextRun({ text: content || '' })
+          ],
+          spacing: { after: 80 }
+        });
+      });
+    }
+
+    // 놀이 설명 셀의 내용 (놀이 단계만)
+    function buildStepsCellChildren(steps) {
+      return steps.map((step, idx) => new Paragraph({
+        children: [new TextRun({ text: `${idx + 1}. ${step}` })],
+        spacing: { after: 60 }
+      }));
+    }
+
+    // 데이터 행
+    state.annualPlan.forEach(row => {
+      if (row.twoActivities) {
+        // 영아 - 월 2개 활동
+        tableRows.push(new TableRow({
+          children: [
+            new TableCell({
+              rowSpan: 2,
+              shading: { fill: C_MONTH },
+              children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.month, bold: true, color: C_ACCENT })]
+              })]
+            }),
+            new TableCell({
+              shading: { fill: C_SUBJECT },
+              children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.activity1.name, bold: true, color: C_ACCENT })]
+              })]
+            }),
+            new TableCell({
+              shading: { fill: C_GOAL },
+              children: buildGoalCellChildren(row.activity1.goals)
+            }),
+            new TableCell({
+              children: buildStepsCellChildren(row.activity1.steps)
+            })
+          ]
+        }));
+        tableRows.push(new TableRow({
+          children: [
+            new TableCell({
+              shading: { fill: C_SUBJECT },
+              children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.activity2.name, bold: true, color: C_ACCENT })]
+              })]
+            }),
+            new TableCell({
+              shading: { fill: C_GOAL },
+              children: buildGoalCellChildren(row.activity2.goals)
+            }),
+            new TableCell({
+              children: buildStepsCellChildren(row.activity2.steps)
+            })
+          ]
+        }));
+      } else {
+        // 유아 - 월 1개 활동
+        tableRows.push(new TableRow({
+          children: [
+            new TableCell({
+              shading: { fill: C_MONTH },
+              children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.month, bold: true, color: C_ACCENT })]
+              })]
+            }),
+            new TableCell({
+              shading: { fill: C_SUBJECT },
+              children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: row.activity.name, bold: true, color: C_ACCENT })]
+              })]
+            }),
+            new TableCell({
+              shading: { fill: C_GOAL },
+              children: buildGoalCellChildren(row.activity.goals)
+            }),
+            new TableCell({
+              children: buildStepsCellChildren(row.activity.steps)
+            })
+          ]
+        }));
+      }
+    });
+
+    // 문서 생성
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          // ========== 표지 영역 ==========
+          // 상단 여백
+          new Paragraph({ text: "", spacing: { before: 400 } }),
+
+          // 카테고리 (작은 부제)
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: "특색보육 프로그램", bold: true, color: C_ACCENT, size: 22 })],
+            spacing: { after: 100 }
+          }),
+
+          // 메인 제목
+          new Paragraph({
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: n.programName, bold: true, size: 40, color: "1A3A5C" })],
+            spacing: { after: 200 }
+          }),
+
+          // 부제 (연령 + 키워드)
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({ text: `${n.age}`, bold: true, color: C_ACCENT, size: 22 }),
+              new TextRun({ text: "  |  ", color: "CCCCCC", size: 22 }),
+              new TextRun({ text: n.keywords.join(' · '), color: "666666", size: 22 })
+            ],
+            spacing: { after: 400 }
+          }),
+
+          // ========== 본문 영역 ==========
+          // 프로그램 목표
+          new Paragraph({
+            children: [new TextRun({ text: "▶  프로그램 목표", bold: true, color: "C89B4A", size: 26 })],
+            spacing: { before: 300, after: 150 }
+          }),
+          ...n.objectives.map((o, i) => new Paragraph({
+            children: [new TextRun({ text: `${i+1}. ${o}`, size: 22 })],
+            spacing: { after: 80 }
+          })),
+
+          // 프로그램 목적
+          new Paragraph({
+            children: [new TextRun({ text: "▶  프로그램 목적", bold: true, color: "C89B4A", size: 26 })],
+            spacing: { before: 400, after: 150 }
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: n.purpose, size: 22 })],
+            spacing: { after: 300 }
+          }),
+
+          // 연간표 제목
+          new Paragraph({
+            children: [new TextRun({ text: "▶  연간 계획표", bold: true, color: "C89B4A", size: 26 })],
+            spacing: { before: 500, after: 200 }
+          }),
+
+          // 표 (4컬럼 비율)
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            columnWidths: [600, 1400, 2200, 5800],
+            rows: tableRows
+          }),
+
+          // 푸터
+          new Paragraph({ text: "", spacing: { before: 400 } }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: "우리아이들 영유아교육디자인연구소", color: "C89B4A", size: 18 })],
+            spacing: { before: 300 }
+          })
+        ]
+      }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const filename = `${n.programName.replace(/[\\/:*?"<>|]/g, '_')}_연간계획.docx`;
+    saveAs(blob, filename);
+
+  } catch (err) {
+    console.error('Word 다운로드 오류:', err);
+    alert('Word 파일 생성 중 오류가 발생했습니다: ' + err.message);
+  }
+}
+
+/* ==========================================
+   📊 PPT 다운로드 (PptxGenJS)
+========================================== */
+function downloadPPT() {
+  try {
+    const isInfant = ['0-1', '2'].includes(state.selectedAge);
+    const n = state.narrative;
+    const pptx = new PptxGenJS();
+
+    // A4 세로 사이즈 정의 (210mm × 297mm = 8.27" × 11.69")
+    pptx.defineLayout({ name: 'A4_PORTRAIT', width: 8.27, height: 11.69 });
+    pptx.layout = 'A4_PORTRAIT';
+    pptx.title = n.programName;
+
+    // 연령별 색상 테마 (PptxGenJS는 # 없이 6자리 hex 사용)
+    const theme = getAgeTheme();
+    const hex = (c) => c.replace('#', '').toUpperCase();
+    const C_HEADER = hex(theme.headerBg);
+    const C_HEADER2 = hex(theme.headerBg2);
+    const C_MONTH = hex(theme.monthBg);
+    const C_SUBJECT = hex(theme.subjectBg);
+    const C_GOAL = hex(theme.goalBg);
+    const C_GOAL_LABEL = hex(theme.goalLabelBg);
+    const C_BORDER = hex(theme.border);
+    const C_ACCENT = hex(theme.accent);
+
+    // ====== 슬라이드 1: 표지 ======
+    const slide1 = pptx.addSlide();
+    slide1.background = { color: 'FAF7F0' };
+
+    // 상단 컬러 헤더 (연령별 색상)
+    slide1.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 0, w: '100%', h: 1.0,
+      fill: { color: C_HEADER }, line: { color: C_HEADER }
+    });
+
+    slide1.addText('특색보육 프로그램', {
+      x: 0.4, y: 0.3, w: 7.5, h: 0.4,
+      fontSize: 14, color: C_ACCENT, bold: true,
+      fontFace: 'Noto Sans KR'
+    });
+
+    // 강조선 (accent 색상)
+    slide1.addShape(pptx.ShapeType.rect, {
+      x: 1.5, y: 4.5, w: 5.27, h: 0.04,
+      fill: { color: C_ACCENT }, line: { color: C_ACCENT }
+    });
+
+    // 프로그램 제목
+    slide1.addText(n.programName, {
+      x: 0.4, y: 5.0, w: 7.47, h: 1.5,
+      fontSize: 28, color: '1A3A5C', bold: true,
+      align: 'center', fontFace: 'Noto Serif KR'
+    });
+
+    // 부제
+    slide1.addText(`${n.age}  |  ${n.keywords.join(' · ')}`, {
+      x: 0.4, y: 6.6, w: 7.47, h: 0.5,
+      fontSize: 14, color: C_ACCENT, align: 'center',
+      fontFace: 'Noto Sans KR'
+    });
+
+    // 하단 푸터
+    slide1.addText('우리아이들 영유아교육디자인연구소', {
+      x: 0.4, y: 11.0, w: 7.47, h: 0.4,
+      fontSize: 11, color: C_ACCENT, align: 'center',
+      fontFace: 'Noto Sans KR'
+    });
+
+    // ====== 슬라이드 2: 프로그램 목표 + 목적 ======
+    const slide2 = pptx.addSlide();
+    slide2.background = { color: 'FAF7F0' };
+
+    addSlideHeader(slide2, pptx, '프로그램 개요', C_HEADER, C_ACCENT);
+
+    slide2.addText([
+      { text: '▶ 프로그램 목표\n\n', options: { bold: true, color: C_ACCENT, fontSize: 14 } },
+      ...n.objectives.flatMap((o, i) => [
+        { text: `${i+1}. ${o}\n`, options: { fontSize: 11, color: '333333' } }
+      ]),
+      { text: '\n\n▶ 프로그램 목적\n\n', options: { bold: true, color: C_ACCENT, fontSize: 14 } },
+      { text: n.purpose, options: { fontSize: 11, color: '333333' } }
+    ], {
+      x: 0.5, y: 1.3, w: 7.27, h: 9.8,
+      fontFace: 'Noto Sans KR',
+      paraSpaceAfter: 4,
+      valign: 'top'
+    });
+
+    // ====== 슬라이드 3+: 연간 계획표 ======
+    const slide3 = pptx.addSlide();
+    slide3.background = { color: 'FAF7F0' };
+
+    addSlideHeader(slide3, pptx, '연간 계획표', C_HEADER, C_ACCENT);
+
+    // 표 헤더 (4컬럼)
+    const tableData = [
+      [
+        { text: '월', options: { bold: true, fill: C_HEADER, align: 'center', valign: 'middle', color: C_ACCENT, fontSize: 10 } },
+        { text: '활동(놀이) 이름', options: { bold: true, fill: C_HEADER, align: 'center', valign: 'middle', color: C_ACCENT, fontSize: 10 } },
+        { text: '활동 영역', options: { bold: true, fill: C_HEADER, align: 'center', valign: 'middle', color: C_ACCENT, fontSize: 10 } },
+        { text: '놀이 설명', options: { bold: true, fill: C_HEADER, align: 'center', valign: 'middle', color: C_ACCENT, fontSize: 10 } }
+      ]
+    ];
+
+    // 키워드/목표 텍스트 (셀 1)
+    function buildGoalText(goals) {
+      return goals.map(g => {
+        const [label, content] = g.split(': ');
+        return `[${label}] ${content || ''}`;
+      }).join('\n');
+    }
+
+    // 놀이 설명 텍스트 (셀 2)
+    function buildStepsText(steps) {
+      return steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
+    }
+
+    state.annualPlan.forEach(row => {
+      if (row.twoActivities) {
+        tableData.push([
+          { text: row.month, options: { rowspan: 2, bold: true, fill: C_MONTH, align: 'center', valign: 'middle', color: C_ACCENT, fontSize: 10 } },
+          { text: row.activity1.name, options: { fill: C_SUBJECT, align: 'center', valign: 'middle', bold: true, color: C_ACCENT, fontSize: 9 } },
+          { text: buildGoalText(row.activity1.goals), options: { fill: C_GOAL, valign: 'middle', fontSize: 8, color: '333333' } },
+          { text: buildStepsText(row.activity1.steps), options: { valign: 'middle', fontSize: 8, color: '333333' } }
+        ]);
+        tableData.push([
+          { text: row.activity2.name, options: { fill: C_SUBJECT, align: 'center', valign: 'middle', bold: true, color: C_ACCENT, fontSize: 9 } },
+          { text: buildGoalText(row.activity2.goals), options: { fill: C_GOAL, valign: 'middle', fontSize: 8, color: '333333' } },
+          { text: buildStepsText(row.activity2.steps), options: { valign: 'middle', fontSize: 8, color: '333333' } }
+        ]);
+      } else {
+        tableData.push([
+          { text: row.month, options: { bold: true, fill: C_MONTH, align: 'center', valign: 'middle', color: C_ACCENT, fontSize: 10 } },
+          { text: row.activity.name, options: { fill: C_SUBJECT, align: 'center', valign: 'middle', bold: true, color: C_ACCENT, fontSize: 9 } },
+          { text: buildGoalText(row.activity.goals), options: { fill: C_GOAL, valign: 'middle', fontSize: 8, color: '333333' } },
+          { text: buildStepsText(row.activity.steps), options: { valign: 'middle', fontSize: 8, color: '333333' } }
+        ]);
+      }
+    });
+
+    slide3.addTable(tableData, {
+      x: 0.3, y: 1.2, w: 7.67,
+      // 컬럼 비율: 월(0.5) + 활동명(1.4) + 키워드/목표(2.0) + 놀이설명(3.77) = 7.67"
+      colW: [0.5, 1.4, 2.0, 3.77],
+      fontSize: 9,
+      fontFace: 'Noto Sans KR',
+      border: { type: 'solid', pt: 0.75, color: C_BORDER },
+      autoPage: true,
+      autoPageRepeatHeader: true,
+      autoPageHeaderRows: 1,
+      autoPageSlideStartY: 1.2
+    });
+
+    // 파일 저장
+    const filename = `${n.programName.replace(/[\\/:*?"<>|]/g, '_')}_연간계획.pptx`;
+    pptx.writeFile({ fileName: filename });
+
+  } catch (err) {
+    console.error('PPT 다운로드 오류:', err);
+    alert('PPT 파일 생성 중 오류가 발생했습니다: ' + err.message);
+  }
+}
+
+// PPT 슬라이드 공통 헤더 (A4 세로용) - 연령별 색상 적용
+function addSlideHeader(slide, pptx, title, headerColor, accentColor) {
+  // 상단 컬러 바 (연령별 색상)
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: '100%', h: 0.7,
+    fill: { color: headerColor || 'D4E4C4' },
+    line: { color: headerColor || 'D4E4C4' }
+  });
+
+  slide.addText(title, {
+    x: 0.4, y: 0.15, w: 7.5, h: 0.4,
+    fontSize: 13, color: accentColor || '1A3A5C', bold: true,
+    fontFace: 'Noto Sans KR'
+  });
+
+  // 진한 강조선 (accent 색상)
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0.7, w: '100%', h: 0.04,
+    fill: { color: accentColor || 'C89B4A' },
+    line: { color: accentColor || 'C89B4A' }
+  });
+}
+
+/* ==========================================
+   초기화
+========================================== */
+renderKeywords();
+</script>
+
+</body>
+</html>
