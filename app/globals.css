@@ -585,3 +585,31 @@ ol.steps-list li::before {
 .notice h2 { color: #c0392b; }
 .notice h2::before { content: '⚠ '; }
 .notice p { margin: 0; font-size: 14.5px; line-height: 1.8; }
+
+/* ── 8차시 면접 코칭 ── */
+.iv-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+@media (max-width: 700px) { .iv-choices { grid-template-columns: 1fr; } }
+.iv-choice {
+  text-align: left; padding: 16px 18px; border-radius: 12px; cursor: pointer;
+  border: 1px solid #d8dee6; background: #fff; font-family: inherit;
+}
+.iv-choice.on { border: 2px solid #1a3a5c; background: #eaf0f7; }
+.iv-choice b { display: block; font-size: 16px; color: #1a3a5c; margin-bottom: 6px; }
+.iv-choice span { display: block; font-size: 13.5px; color: var(--muted); line-height: 1.65; }
+
+.iv-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; font-size: 14px; color: var(--muted); }
+
+.iv-q { background: #f7f4ec; border-left: 4px solid #c89b4a; border-radius: 0 8px 8px 0; padding: 16px 18px; margin-bottom: 18px; }
+.iv-q-label { font-size: 12px; color: #c89b4a; font-weight: 700; margin-bottom: 5px; }
+.iv-q-text { font-size: 16px; color: #1a3a5c; font-weight: 600; line-height: 1.7; }
+
+.iv-a { background: #f4f7fa; border: 1px solid #d8e3ee; border-radius: 12px; padding: 16px 18px; margin-top: 16px; }
+.iv-a-label { font-size: 13px; color: #1a3a5c; font-weight: 700; margin-bottom: 6px; }
+.iv-f { background: #fdf8ee; border: 1px solid #e3c587; border-radius: 12px; padding: 16px 18px; margin-top: 12px; }
+.iv-f-label { font-size: 13px; color: #9a6f1f; font-weight: 700; margin-bottom: 6px; }
+.iv-body { font-size: 14.5px; line-height: 1.85; white-space: pre-wrap; }
+
+.iv-item { border: 1px solid #e6e0d4; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; background: #fbf9f5; page-break-inside: avoid; }
+.iv-item-q { font-size: 15px; font-weight: 600; color: #1a3a5c; margin-bottom: 8px; line-height: 1.6; }
+.iv-item-mine { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+.iv-item-mine b { color: #2a2a2a; }
