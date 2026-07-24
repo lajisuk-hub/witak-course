@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { loadAll, markDone } from '@/lib/store';
+import { loadAll, patch, markDone } from '@/lib/store';
 import { useMe } from '@/lib/auth';
 import ContactBar from '@/app/ContactBar';
 import { buildVulnerableDoc, VULN_AREAS } from '@/lib/vulnerableDoc';
@@ -14,15 +14,26 @@ export default function Step5() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [again, setAgain] = useState(false); // 전에 하신 적이 있는지
 
+  // 전에 고르신 영역을 그대로 다시 보여 준다 (다시 들어와도 처음부터 하지 않도록)
   useEffect(() => {
     if (!authed || !me) return;
+    const d = loadAll();
+    if (Array.isArray(d.vulnPicked) && d.vulnPicked.length) {
+      setPicked(d.vulnPicked);
+      setAgain(true);
+    }
     setReady(true);
   }, [authed, me]);
 
   function toggle(key) {
     setResult(null);
-    setPicked((p) => (p.includes(key) ? p.filter((k) => k !== key) : [...p, key]));
+    setPicked((p) => {
+      const next = p.includes(key) ? p.filter((k) => k !== key) : [...p, key];
+      patch({ vulnPicked: next });
+      return next;
+    });
   }
 
   async function make() {
@@ -66,6 +77,13 @@ export default function Step5() {
 
       <div className="wrap" style={{ maxWidth: 680 }}>
         {error && <div className="err">{error}</div>}
+
+        {again && (
+          <div className="info" style={{ marginBottom: 12 }}>
+            <b>전에 고르신 영역이 그대로 남아 있습니다.</b> 그대로 문서를 다시 받으셔도 되고,
+            체크를 고쳐서 새로 만드셔도 됩니다.
+          </div>
+        )}
 
         <div className="card welcome">
           <h2>우리 원이 하는 취약보육을 골라 주세요</h2>

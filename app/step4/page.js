@@ -77,6 +77,11 @@ export default function Step4() {
             <br />④ 그 워드파일을 <b>맨 아래 칸에 올리시면</b>, 원장님 서식에 연령별 목표·목적·연간표가
             차례대로 채워진 한글 파일 <b>하나</b>가 만들어집니다.
           </p>
+          <div className="warn" style={{ marginTop: 12 }}>
+            <b>이 화면은 중간에 나가시면 입력한 내용이 사라집니다.</b> 한 번에 끝까지 만드시고,{' '}
+            <b>받으신 워드 파일은 컴퓨터에 꼭 보관</b>해 두세요. 나중에 고치실 때 그 워드만 다시
+            올리시면 한글 파일을 새로 받으실 수 있습니다.
+          </div>
         </div>
 
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

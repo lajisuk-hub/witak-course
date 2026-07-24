@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { loadAll, markDone } from '@/lib/store';
+import { loadAll, patch, markDone } from '@/lib/store';
 import { useMe } from '@/lib/auth';
 import ContactBar from '@/app/ContactBar';
 import { buildParentDoc } from '@/lib/parentDoc';
@@ -35,24 +35,59 @@ export default function Step6() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [again, setAgain] = useState(false); // 전에 하신 적이 있는지
 
+  // 전에 쓰신 특색·프로그램·AI 초안을 그대로 다시 보여 준다
   useEffect(() => {
     if (!authed || !me) return;
+    const d = loadAll();
+    const s = d.parentStep || null;
+    if (s) {
+      if (s.theme) setTheme(s.theme);
+      if (s.customTheme) setCustomTheme(s.customTheme);
+      if (Array.isArray(s.rows) && s.rows.length) setRows(s.rows);
+      if (Array.isArray(s.generated) && s.generated.length) setGenerated(s.generated);
+      setAgain(true);
+    }
     setReady(true);
   }, [authed, me]);
 
   const finalTheme = theme === '직접 입력' ? customTheme.trim() : theme;
 
+  // 화면에서 고칠 때마다 저장해 둔다 (다시 들어와도 남아 있게)
+  function keep(part) {
+    const d = loadAll();
+    patch({ parentStep: { ...(d.parentStep || {}), ...part } });
+  }
+
+  function pickTheme(t) {
+    setTheme(t);
+    setGenerated(null);
+    setResult(null);
+    keep({ theme: t, generated: null });
+  }
   function setRow(i, key, val) {
     setGenerated(null);
     setResult(null);
-    setRows((r) => r.map((x, j) => (j === i ? { ...x, [key]: val } : x)));
+    setRows((r) => {
+      const next = r.map((x, j) => (j === i ? { ...x, [key]: val } : x));
+      keep({ rows: next, generated: null });
+      return next;
+    });
   }
   function addRow() {
-    setRows((r) => [...r, { target: '부모', freq: '연 2회' }]);
+    setRows((r) => {
+      const next = [...r, { target: '부모', freq: '연 2회' }];
+      keep({ rows: next });
+      return next;
+    });
   }
   function removeRow(i) {
-    setRows((r) => r.filter((_, j) => j !== i));
+    setRows((r) => {
+      const next = r.filter((_, j) => j !== i);
+      keep({ rows: next });
+      return next;
+    });
   }
 
   async function generate() {
@@ -76,6 +111,7 @@ export default function Step6() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '작성하지 못했습니다.');
       setGenerated(data.programs);
+      keep({ theme, customTheme, rows, generated: data.programs });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -119,6 +155,13 @@ export default function Step6() {
       <div className="wrap" style={{ maxWidth: 760 }}>
         {error && <div className="err">{error}</div>}
 
+        {again && (
+          <div className="info" style={{ marginBottom: 12 }}>
+            <b>전에 쓰신 내용이 그대로 남아 있습니다.</b> 이어서 하셔도 되고, 고쳐서 새로 만드셔도
+            됩니다.
+          </div>
+        )}
+
         {/* 1. 특색 */}
         <div className="card welcome">
           <h2>① 우리 원 특색을 골라 주세요</h2>
@@ -127,11 +170,7 @@ export default function Step6() {
             {[...THEMES, '직접 입력'].map((t) => (
               <button
                 key={t}
-                onClick={() => {
-                  setTheme(t);
-                  setGenerated(null);
-                  setResult(null);
-                }}
+                onClick={() => pickTheme(t)}
                 className="drop"
                 style={{
                   padding: '8px 14px',
@@ -154,6 +193,7 @@ export default function Step6() {
               onChange={(e) => {
                 setCustomTheme(e.target.value);
                 setGenerated(null);
+                keep({ customTheme: e.target.value, generated: null });
               }}
               placeholder="예) 그림책 놀이, 생태 텃밭, 세계 문화 체험 …"
               style={{ marginTop: 10, width: '100%', padding: 12, fontSize: 16 }}

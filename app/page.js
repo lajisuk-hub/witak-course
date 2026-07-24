@@ -126,9 +126,16 @@ export default function Home() {
         {/* ② 차시 (작게 나열) */}
         <div className="card chips-card">
           {tocReady ? (
-            <p className="sub" style={{ margin: '0 0 12px' }}>
-              아래 순서대로 문서를 만드시면 됩니다. 끝낸 곳은 <b>✓</b> 로 표시됩니다.
-            </p>
+            <>
+              <p className="sub" style={{ margin: '0 0 8px' }}>
+                아래 순서대로 문서를 만드시면 됩니다. 끝낸 곳은 <b>✓</b> 로 표시됩니다.
+              </p>
+              <p className="sub" style={{ margin: '0 0 12px' }}>
+                <b>✓ 표시된 차시도 다시 눌러 들어가실 수 있습니다.</b> 0·1·5·6차시는 전에 쓰신
+                내용이 그대로 남아 있어 이어서 고치시면 되고, <b>2차시(예산)·4차시(특색)</b>는 앱
+                화면이라 다시 처음부터 입력해야 하니 <b>받으신 엑셀·워드 파일을 보관</b>해 두세요.
+              </p>
+            </>
           ) : (
             <div className="warn" style={{ margin: '0 0 14px' }}>
               <b>아래 순서대로 문서를 제작하면 됩니다.</b>
