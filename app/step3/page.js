@@ -1,95 +1,31 @@
 'use client';
 
 // 3차시 · 연간–월간–하루일지 계획
-// 우리 원에 있는 반(연령)을 고르면
-//   · 표준보육과정 기본설명 (항상 포함)
-//   · 고른 연령의 연간놀이계획안 (원장님 샘플 원본 그대로)
-//   · 고른 연령의 월간보육계획안 · 하루 일과/보육일지 (앱이 만들어 넣는 샘플)
-// 이 담긴 한글 문서를 만들어 드린다.
+// 원장님이 올려 주신 샘플 문서를 그대로 내려받는 단계다.
+// (연령 고르기 · 연간계획안 새로 만들기는 원장님 지시로 없앴다 — 2026-09-02)
 
-import { useEffect, useState } from 'react';
-import { loadAll, patch, markDone } from '@/lib/store';
+import { useState } from 'react';
+import { markDone } from '@/lib/store';
 import { useMe } from '@/lib/auth';
 import ContactBar from '@/app/ContactBar';
 import { downloadBlob } from '@/lib/formDoc';
-import { buildProgramPlanDoc, downloadWholeSample } from '@/lib/programPlanDoc';
-import { PLAN_AGES } from '@/lib/planContent';
+import { downloadWholeSample } from '@/lib/programPlanDoc';
 
 export default function Step3() {
   const { me, ready: authed } = useMe();
-  const [ready, setReady] = useState(false);
-  const [picked, setPicked] = useState([]);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [result, setResult] = useState(null);
-  const [again, setAgain] = useState(false);
-  // 연간놀이계획안을 'sample'(원장님이 올려 주신 원본 표, 기본) 로 할지
-  // 'new'(앱이 새로 쓴 열두 달 완성본) 로 할지
-  const [yearPlan, setYearPlan] = useState('sample');
+  const [done, setDone] = useState(false);
 
-  // 전에 고르신 연령을 그대로 다시 보여 준다
-  useEffect(() => {
-    if (!authed || !me) return;
-    const d = loadAll();
-    if (Array.isArray(d.planAges) && d.planAges.length) {
-      setPicked(d.planAges);
-      setAgain(true);
-    }
-    if (d.planYear === 'sample' || d.planYear === 'new') setYearPlan(d.planYear);
-    setReady(true);
-  }, [authed, me]);
-
-  function toggle(key) {
-    setResult(null);
-    setPicked((p) => {
-      const next = p.includes(key) ? p.filter((k) => k !== key) : [...p, key];
-      patch({ planAges: next });
-      return next;
-    });
-  }
-
-  function allAges() {
-    setResult(null);
-    const next = PLAN_AGES.map((a) => a.key);
-    patch({ planAges: next });
-    setPicked(next);
-  }
-
-  async function make() {
-    if (!picked.length) {
-      setError('우리 원에 있는 반을 한 개 이상 골라 주세요.');
-      return;
-    }
+  async function getSample() {
     setError('');
-    setResult(null);
-    setBusy('문서를 만드는 중입니다...');
-    try {
-      const d = loadAll();
-      const ordered = PLAN_AGES.filter((a) => picked.includes(a.key)).map((a) => a.key);
-      const r = await buildProgramPlanDoc({
-        ages: ordered,
-        yearPlan,
-        phone: me.phone,
-        city: d.city,
-        student: d.applicant || me.name,
-        onProgress: setBusy,
-      });
-      downloadBlob(r.blob, r.name);
-      markDone(3);
-      setResult(r);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function wholeSample() {
-    setError('');
-    setBusy('원장님 샘플을 불러오는 중입니다...');
+    setDone(false);
+    setBusy('문서를 받는 중입니다...');
     try {
       const blob = await downloadWholeSample(me.phone);
-      downloadBlob(blob, '연간월간하루일지_원본샘플.hwpx');
+      downloadBlob(blob, '연간월간하루일지_샘플.hwpx');
+      markDone(3);
+      setDone(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -97,7 +33,7 @@ export default function Step3() {
     }
   }
 
-  if (!authed || !me || !ready) return null;
+  if (!authed || !me) return null;
 
   return (
     <>
@@ -110,123 +46,23 @@ export default function Step3() {
       <div className="wrap" style={{ maxWidth: 680 }}>
         {error && <div className="err">{error}</div>}
 
-        {again && (
-          <div className="info" style={{ marginBottom: 12 }}>
-            <b>전에 고르신 반이 그대로 남아 있습니다.</b> 그대로 다시 받으셔도 되고, 체크를 고쳐서
-            새로 만드셔도 됩니다.
-          </div>
-        )}
-
         <div className="card welcome">
-          <h2>우리 원에 있는 반을 골라 주세요</h2>
+          <h2>샘플 문서를 받아 가세요</h2>
           <p>
-            고르신 연령에 맞춰 <b>연간 → 월간 → 하루일지</b>가 이어지는 한글 문서를 만들어
-            드립니다.
+            아래 단추를 누르면 <b>연간 → 월간 → 하루일지</b>가 이어지는 한글 샘플 문서를 그대로
+            받으실 수 있습니다.
             <br />
-            <b>표준보육과정 기본설명</b>(구성방향·5개 영역·구성의 중점·평가·환류체계)은 심사 서류에
-            꼭 들어가므로 <b>항상 함께</b> 들어갑니다.
+            <b>표준보육과정 기본설명</b>(구성방향·5개 영역·구성의 중점·평가·환류체계)과 만 0~5세
+            연간놀이계획안이 모두 들어 있습니다.
           </p>
           <p style={{ fontSize: 14, color: 'var(--muted)', marginTop: 6 }}>
-            만들어진 문서 안의 <b>하루 일과표</b>와 <b>보육일지</b>는 반마다 사정이 다르므로,
-            한글에서 열어 <b>반별로 따로따로 고쳐 쓰셔도 됩니다.</b>
+            받으신 문서 안의 <b>하루 일과표</b>와 <b>보육일지</b>는 반마다 사정이 다르므로, 한글에서
+            열어 <b>반별로 따로따로 고쳐 쓰셔도 됩니다.</b>
           </p>
 
-          <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
-            {PLAN_AGES.map((a) => {
-              const on = picked.includes(a.key);
-              return (
-                <button
-                  key={a.key}
-                  onClick={() => toggle(a.key)}
-                  className="drop"
-                  style={{
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    padding: '14px 16px',
-                    border: on ? '2px solid #1a3a5c' : '1px solid #d8dee6',
-                    background: on ? '#eaf0f7' : '#fff',
-                    borderRadius: 12,
-                    fontSize: 16,
-                    color: '#1a3a5c',
-                    fontWeight: on ? 700 : 500,
-                  }}
-                >
-                  {on ? '☑' : '⬜'} {a.label} <span style={{ fontWeight: 400, fontSize: 14 }}>
-                    ({a.band}반 · 연간 + 월간 + 하루일지)
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={{ marginTop: 8, fontSize: 14, color: 'var(--muted)' }}>
-            고른 반: {picked.length}개{' '}
-            <button
-              onClick={allAges}
-              style={{
-                marginLeft: 6,
-                border: 'none',
-                background: 'none',
-                color: '#1a3a5c',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-                fontSize: 14,
-              }}
-            >
-              0~5세 모두 고르기
-            </button>
-          </div>
-
-          <div style={{ marginTop: 18 }}>
-            <b style={{ color: '#1a3a5c' }}>연간 놀이계획안은 어느 것으로 넣을까요?</b>
-            <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-              {[
-                {
-                  key: 'sample',
-                  title: '내가 올린 샘플 그대로 (기본)',
-                  desc:
-                    '원장님이 올려 주신 연간놀이계획안 표를 그대로 넣습니다. 표 모양·내용은 그대로 두고 오타와 문체만 다듬습니다.',
-                },
-                {
-                  key: 'new',
-                  title: '열두 달 완성본 (앱이 새로 쓴 표)',
-                  desc:
-                    '3월부터 이듬해 2월까지 열두 달을 모두 채우고, 달마다 표준보육과정 5개 영역·행사·안전교육·인성 프로그램을 함께 적은 표입니다.',
-                },
-              ].map((o) => {
-                const on = yearPlan === o.key;
-                return (
-                  <button
-                    key={o.key}
-                    onClick={() => {
-                      setResult(null);
-                      setYearPlan(o.key);
-                      patch({ planYear: o.key });
-                    }}
-                    className="drop"
-                    style={{
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      padding: '12px 14px',
-                      border: on ? '2px solid #1a3a5c' : '1px solid #d8dee6',
-                      background: on ? '#eaf0f7' : '#fff',
-                      borderRadius: 12,
-                      color: '#1a3a5c',
-                    }}
-                  >
-                    <div style={{ fontWeight: on ? 700 : 600, fontSize: 15 }}>
-                      {on ? '◉' : '○'} {o.title}
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>{o.desc}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <div className="row" style={{ marginTop: 16 }}>
-            <button className="btn btn-gold" onClick={make} disabled={!!busy}>
-              {busy ? '만드는 중...' : '문서 만들기 (한글 .hwpx)'}
+            <button className="btn btn-gold" onClick={getSample} disabled={!!busy}>
+              {busy ? '받는 중...' : '샘플 문서 받기 (한글 .hwpx)'}
             </button>
           </div>
 
@@ -240,32 +76,15 @@ export default function Step3() {
             </div>
           )}
 
-          {result && (
+          {done && (
             <div className="info">
-              <b>{result.name}</b> 을 받았습니다.
+              <b>연간월간하루일지_샘플.hwpx</b> 를 받았습니다.
               <br />
-              담긴 반 {result.used.length}개: {result.used.join(', ')} — 반마다 연간(
-              {yearPlan === 'new' ? '열두 달 완성본' : '내가 올린 샘플 그대로'}) · 월간(3월 예시) · 주간(3월 1주
-              예시) · 하루 일과표와 보육일지 서식이 들어 있습니다. 앞뒤로 발달 특성, 편성·운영·평가
-              절차, 연장보육 계획, 기록·평가 서식도 함께 들어갑니다.
-              <br />
-              {result.missing.length > 0 && (
-                <>
-                  <b>{result.missing.join(', ')}</b>는 원장님 샘플에 연간놀이계획안이 없어 빠졌습니다.
-                  <br />
-                </>
-              )}
               한글에서 열어 우리 원 반 이름·시간·정원에 맞게 고쳐 쓰시면 됩니다.
-              <br />
-              <b>하루 일과표와 보육일지는 반마다 따로따로 고치셔도 됩니다.</b> 반별로 등원·낮잠·하원
-              시간이 다르면 그 반 것만 바꿔 주세요.
             </div>
           )}
 
-          <div className="row" style={{ marginTop: 14, gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-ghost" onClick={wholeSample} disabled={!!busy}>
-              원장님 샘플 원본 전체 받기
-            </button>
+          <div className="row" style={{ marginTop: 14 }}>
             <a className="btn btn-ghost" href="/">
               메인으로 →
             </a>
