@@ -23,6 +23,8 @@ export default function Step3() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [again, setAgain] = useState(false);
+  // 연간놀이계획안을 'new'(열두 달 완성본) 로 할지 'sample'(원장님 원본 표) 로 할지
+  const [yearPlan, setYearPlan] = useState('new');
 
   // 전에 고르신 연령을 그대로 다시 보여 준다
   useEffect(() => {
@@ -32,6 +34,7 @@ export default function Step3() {
       setPicked(d.planAges);
       setAgain(true);
     }
+    if (d.planYear === 'sample' || d.planYear === 'new') setYearPlan(d.planYear);
     setReady(true);
   }, [authed, me]);
 
@@ -64,6 +67,7 @@ export default function Step3() {
       const ordered = PLAN_AGES.filter((a) => picked.includes(a.key)).map((a) => a.key);
       const r = await buildProgramPlanDoc({
         ages: ordered,
+        yearPlan,
         phone: me.phone,
         city: d.city,
         student: d.applicant || me.name,
@@ -168,6 +172,53 @@ export default function Step3() {
             </button>
           </div>
 
+          <div style={{ marginTop: 18 }}>
+            <b style={{ color: '#1a3a5c' }}>연간 놀이계획안은 어느 것으로 넣을까요?</b>
+            <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+              {[
+                {
+                  key: 'new',
+                  title: '열두 달 완성본 (추천)',
+                  desc:
+                    '3월부터 이듬해 2월까지 열두 달을 모두 채우고, 달마다 표준보육과정 5개 영역·행사·안전교육·인성 프로그램을 함께 적은 표입니다.',
+                },
+                {
+                  key: 'sample',
+                  title: '라지숙 소장 원본 표 그대로',
+                  desc:
+                    '원장님이 올려 주신 연간놀이계획안 표를 그대로 넣습니다. (오타·문체만 다듬습니다)',
+                },
+              ].map((o) => {
+                const on = yearPlan === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    onClick={() => {
+                      setResult(null);
+                      setYearPlan(o.key);
+                      patch({ planYear: o.key });
+                    }}
+                    className="drop"
+                    style={{
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      padding: '12px 14px',
+                      border: on ? '2px solid #1a3a5c' : '1px solid #d8dee6',
+                      background: on ? '#eaf0f7' : '#fff',
+                      borderRadius: 12,
+                      color: '#1a3a5c',
+                    }}
+                  >
+                    <div style={{ fontWeight: on ? 700 : 600, fontSize: 15 }}>
+                      {on ? '◉' : '○'} {o.title}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>{o.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="row" style={{ marginTop: 16 }}>
             <button className="btn btn-gold" onClick={make} disabled={!!busy}>
               {busy ? '만드는 중...' : '문서 만들기 (한글 .hwpx)'}
@@ -188,8 +239,10 @@ export default function Step3() {
             <div className="info">
               <b>{result.name}</b> 을 받았습니다.
               <br />
-              담긴 반 {result.used.length}개: {result.used.join(', ')} — 반마다 연간놀이계획안 ·
-              월간보육계획안(3월 예시) · 하루 일과표와 보육일지 서식이 들어 있습니다.
+              담긴 반 {result.used.length}개: {result.used.join(', ')} — 반마다 연간(
+              {yearPlan === 'new' ? '열두 달 완성본' : '원본 표'}) · 월간(3월 예시) · 주간(3월 1주
+              예시) · 하루 일과표와 보육일지 서식이 들어 있습니다. 앞뒤로 발달 특성, 편성·운영·평가
+              절차, 연장보육 계획, 기록·평가 서식도 함께 들어갑니다.
               <br />
               {result.missing.length > 0 && (
                 <>
