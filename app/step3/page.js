@@ -23,8 +23,9 @@ export default function Step3() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [again, setAgain] = useState(false);
-  // 연간놀이계획안을 'new'(열두 달 완성본) 로 할지 'sample'(원장님 원본 표) 로 할지
-  const [yearPlan, setYearPlan] = useState('new');
+  // 연간놀이계획안을 'sample'(원장님이 올려 주신 원본 표, 기본) 로 할지
+  // 'new'(앱이 새로 쓴 열두 달 완성본) 로 할지
+  const [yearPlan, setYearPlan] = useState('sample');
 
   // 전에 고르신 연령을 그대로 다시 보여 준다
   useEffect(() => {
@@ -125,6 +126,10 @@ export default function Step3() {
             <b>표준보육과정 기본설명</b>(구성방향·5개 영역·구성의 중점·평가·환류체계)은 심사 서류에
             꼭 들어가므로 <b>항상 함께</b> 들어갑니다.
           </p>
+          <p style={{ fontSize: 14, color: 'var(--muted)', marginTop: 6 }}>
+            만들어진 문서 안의 <b>하루 일과표</b>와 <b>보육일지</b>는 반마다 사정이 다르므로,
+            한글에서 열어 <b>반별로 따로따로 고쳐 쓰셔도 됩니다.</b>
+          </p>
 
           <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
             {PLAN_AGES.map((a) => {
@@ -177,16 +182,16 @@ export default function Step3() {
             <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
               {[
                 {
-                  key: 'new',
-                  title: '열두 달 완성본 (추천)',
+                  key: 'sample',
+                  title: '내가 올린 샘플 그대로 (기본)',
                   desc:
-                    '3월부터 이듬해 2월까지 열두 달을 모두 채우고, 달마다 표준보육과정 5개 영역·행사·안전교육·인성 프로그램을 함께 적은 표입니다.',
+                    '원장님이 올려 주신 연간놀이계획안 표를 그대로 넣습니다. 표 모양·내용은 그대로 두고 오타와 문체만 다듬습니다.',
                 },
                 {
-                  key: 'sample',
-                  title: '라지숙 소장 원본 표 그대로',
+                  key: 'new',
+                  title: '열두 달 완성본 (앱이 새로 쓴 표)',
                   desc:
-                    '원장님이 올려 주신 연간놀이계획안 표를 그대로 넣습니다. (오타·문체만 다듬습니다)',
+                    '3월부터 이듬해 2월까지 열두 달을 모두 채우고, 달마다 표준보육과정 5개 영역·행사·안전교육·인성 프로그램을 함께 적은 표입니다.',
                 },
               ].map((o) => {
                 const on = yearPlan === o.key;
@@ -240,7 +245,7 @@ export default function Step3() {
               <b>{result.name}</b> 을 받았습니다.
               <br />
               담긴 반 {result.used.length}개: {result.used.join(', ')} — 반마다 연간(
-              {yearPlan === 'new' ? '열두 달 완성본' : '원본 표'}) · 월간(3월 예시) · 주간(3월 1주
+              {yearPlan === 'new' ? '열두 달 완성본' : '내가 올린 샘플 그대로'}) · 월간(3월 예시) · 주간(3월 1주
               예시) · 하루 일과표와 보육일지 서식이 들어 있습니다. 앞뒤로 발달 특성, 편성·운영·평가
               절차, 연장보육 계획, 기록·평가 서식도 함께 들어갑니다.
               <br />
@@ -251,6 +256,9 @@ export default function Step3() {
                 </>
               )}
               한글에서 열어 우리 원 반 이름·시간·정원에 맞게 고쳐 쓰시면 됩니다.
+              <br />
+              <b>하루 일과표와 보육일지는 반마다 따로따로 고치셔도 됩니다.</b> 반별로 등원·낮잠·하원
+              시간이 다르면 그 반 것만 바꿔 주세요.
             </div>
           )}
 
