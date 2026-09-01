@@ -6,7 +6,7 @@
 // 그 안에 지금까지 차시별로 만든 문서를 직접 옮겨 정리한다.
 
 import { useEffect, useState } from 'react';
-import { markDone, loadDone } from '@/lib/store';
+import { markDone, loadDone, loadAll, patch } from '@/lib/store';
 import { useMe } from '@/lib/auth';
 import ContactBar from '@/app/ContactBar';
 import { downloadBlob } from '@/lib/formDoc';
@@ -19,12 +19,42 @@ export default function Step7() {
   const [error, setError] = useState('');
   const [got, setGot] = useState(false);
   const [done, setDone] = useState({});
+  // 표지 만들기용 — 어린이집 이름 · 지원자 이름 (0차시에서 적으신 것을 그대로 가져온다)
+  const [center, setCenter] = useState('');
+  const [applicant, setApplicant] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!authed || !me) return;
     setDone(loadDone());
+    const d = loadAll();
+    setCenter(d.center || '');
+    setApplicant(d.applicant || me.name || '');
     setReady(true);
   }, [authed, me]);
+
+  // 챗GPT에 넣을 문장
+  const coverPrompt =
+    `이 로고를 이용해서 ${(center || '00').trim()} 위탁사업계획서 ` +
+    `지원자 ${(applicant || '000').trim()} A4 사이즈 표지를 만들어줘`;
+
+  async function copyPrompt() {
+    try {
+      await navigator.clipboard.writeText(coverPrompt);
+    } catch {
+      // 옛 브라우저에서도 복사되게 한다
+      const t = document.createElement('textarea');
+      t.value = coverPrompt;
+      t.style.position = 'fixed';
+      t.style.opacity = '0';
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      document.body.removeChild(t);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
 
   async function getSample() {
     setError('');
@@ -108,6 +138,91 @@ export default function Step7() {
             <div className="info">
               전체 문서 샘플을 받았습니다. 한글에서 열어, 지금까지 만든 문서를 자리에 맞게 옮겨
               정리해 주세요.
+            </div>
+          )}
+        </div>
+
+        <div className="card welcome">
+          <h2>표지도 만들어 붙이세요 (챗GPT)</h2>
+          <p>
+            우리 <b>시·군·구 로고</b>를 넣은 표지를 챗GPT가 그려 줍니다. 아래 순서대로만 하시면
+            됩니다.
+          </p>
+          <ol style={{ margin: '10px 0 0', paddingLeft: 20, lineHeight: 2 }}>
+            <li>
+              우리 <b>시·군·구 누리집</b>에서 로고(심벌·마크) 그림을 컴퓨터에 저장합니다.
+            </li>
+            <li>
+              <b>챗GPT</b>를 열고, 저장한 <b>로고 그림을 올립니다.</b>
+            </li>
+            <li>
+              아래 <b>[문장 복사하기]</b>를 눌러 챗GPT 입력칸에 붙여 넣고 보냅니다.
+            </li>
+            <li>만들어진 표지 그림을 저장해 전체 문서 맨 앞에 넣으시면 됩니다.</li>
+          </ol>
+
+          <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+            <label style={{ display: 'block', fontSize: 14, color: '#1a3a5c', fontWeight: 700 }}>
+              어린이집 이름
+              <input
+                type="text"
+                value={center}
+                placeholder="예) 멘토어린이집"
+                onChange={(e) => {
+                  setCenter(e.target.value);
+                  patch({ center: e.target.value });
+                }}
+                style={{ width: '100%', marginTop: 4, fontWeight: 400 }}
+              />
+            </label>
+            <label style={{ display: 'block', fontSize: 14, color: '#1a3a5c', fontWeight: 700 }}>
+              지원자 이름
+              <input
+                type="text"
+                value={applicant}
+                placeholder="예) 라지숙"
+                onChange={(e) => {
+                  setApplicant(e.target.value);
+                  patch({ applicant: e.target.value });
+                }}
+                style={{ width: '100%', marginTop: 4, fontWeight: 400 }}
+              />
+            </label>
+          </div>
+
+          <div
+            style={{
+              marginTop: 12,
+              padding: '12px 14px',
+              background: '#f6f8fb',
+              border: '1px solid #d8dee6',
+              borderRadius: 10,
+              fontSize: 15,
+              lineHeight: 1.7,
+              color: '#1a3a5c',
+            }}
+          >
+            {coverPrompt}
+          </div>
+
+          <div className="row" style={{ marginTop: 12, gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn btn-gold" onClick={copyPrompt}>
+              {copied ? '복사했습니다 ✓' : '문장 복사하기'}
+            </button>
+            <a
+              className="btn btn-ghost"
+              href="https://chatgpt.com/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              챗GPT 열기 →
+            </a>
+          </div>
+
+          {copied && (
+            <div className="info">
+              문장을 복사했습니다. 챗GPT에 <b>로고 그림을 먼저 올린 뒤</b> 입력칸을 누르고
+              <b> Ctrl + V</b>로 붙여 넣어 주세요.
             </div>
           )}
         </div>
