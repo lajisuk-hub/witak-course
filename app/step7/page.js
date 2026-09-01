@@ -161,6 +161,24 @@ export default function Step7() {
             <li>만들어진 표지 그림을 저장해 전체 문서 맨 앞에 넣으시면 됩니다.</li>
           </ol>
 
+          <figure style={{ margin: '14px 0 0' }}>
+            <img
+              src="/cover-sample.png"
+              alt="챗GPT에 화성특례시 로고를 올리고 문장을 넣어 만든 표지 예시"
+              style={{
+                width: '100%',
+                maxWidth: 540,
+                display: 'block',
+                borderRadius: 10,
+                border: '1px solid #d8dee6',
+              }}
+            />
+            <figcaption style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>
+              라지숙 소장이 실제로 해 본 화면입니다. <b>로고 그림을 올리고</b> 아래 문장을 넣었더니
+              이런 표지가 나왔습니다.
+            </figcaption>
+          </figure>
+
           <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
             <label style={{ display: 'block', fontSize: 14, color: '#1a3a5c', fontWeight: 700 }}>
               어린이집 이름
