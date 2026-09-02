@@ -10,7 +10,6 @@ import { downloadBlob } from '@/lib/formDoc';
 export default function Step2() {
   const { me, ready: authed } = useMe();
   const [ready, setReady] = useState(false);
-  const [tocReady, setTocReady] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
@@ -19,8 +18,6 @@ export default function Step2() {
 
   useEffect(() => {
     if (!authed || !me) return;
-    const d = loadAll();
-    setTocReady(Array.isArray(d.items) && d.items.length > 0);
     setReady(true);
   }, [authed, me]);
 
@@ -56,32 +53,6 @@ export default function Step2() {
   }
 
   if (!authed || !me || !ready) return null;
-
-  if (!tocReady) {
-    return (
-      <>
-        <div className="head">
-          <h1>2차시 · 40인 기준 회계서류</h1>
-          <p>먼저 하실 일이 있습니다</p>
-          <a href="/">← 차시 목록으로</a>
-        </div>
-        <div className="wrap" style={{ maxWidth: 560 }}>
-          <div className="card welcome">
-            <h2>먼저 우리 지자체 목차를 정리해 주세요</h2>
-            <p>
-              예산서도 <b>통합 위탁 서류의 한 부분</b>입니다. 0차시에서 공고문의 목차를 올리고
-              반영하신 뒤 다시 오세요.
-            </p>
-            <div className="row" style={{ marginTop: 14 }}>
-              <a className="btn btn-gold" href="/toc">
-                0차시 목차 만들기 하러 가기 →
-              </a>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
 
   return (
     <>

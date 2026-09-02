@@ -140,9 +140,10 @@ export default function Home() {
             <div className="warn" style={{ margin: '0 0 14px' }}>
               <b>아래 순서대로 문서를 제작하면 됩니다.</b>
               <br />
-              가장 먼저 <b>0. 우리 지자체 목차 만들기</b>를 눌러 이동해서 목차를 정리하세요.
+              가장 먼저 <b>0. 우리 지자체 목차 만들기</b>를 눌러 목차를 정리하시면 우리 지자체
+              순서에 맞게 서류가 쌓입니다.
               <br />
-              목차를 정리해야 다음 차시로 넘어갈 수 있습니다.
+              먼저 해 보고 싶은 차시가 있으면 <b>아무 차시나 바로 누르셔도 됩니다.</b>
             </div>
           )}
 
@@ -150,20 +151,12 @@ export default function Home() {
             {COURSE.map((c) => {
               const finished = !!done[String(c.no)];
               const soon = !c.href;
-              const locked = !tocReady && c.no !== 0; // 목차 먼저
               const label = (
                 <>
-                  <b>{locked ? '🔒' : finished ? '✓' : c.no}</b>
+                  <b>{finished ? '✓' : c.no}</b>
                   <span>{c.title}</span>
                 </>
               );
-              if (locked) {
-                return (
-                  <span className="chip off" key={c.no} title="먼저 0차시 목차를 정리해 주세요">
-                    {label}
-                  </span>
-                );
-              }
               return soon ? (
                 <span className="chip off" key={c.no} title={c.desc}>
                   {label}
