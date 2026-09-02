@@ -176,7 +176,8 @@ export default function Start() {
             </div>
 
             <div className="info">
-              여기에 쓰신 내용은 <b>원장님 컴퓨터에만</b> 저장됩니다. 다른 사람은 볼 수 없습니다.
+              여기에 쓰신 내용은 <b>원장님 전화번호로 안전하게 보관</b>됩니다. 휴대폰·컴퓨터 어디서든
+              같은 번호로 들어오시면 <b>하시던 곳부터 이어서</b> 하실 수 있고, 다른 사람은 볼 수 없습니다.
             </div>
 
             <div className="foot-nav">

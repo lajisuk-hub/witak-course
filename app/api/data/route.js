@@ -1,0 +1,85 @@
+// 수강생이 쓴 내용을 **전화번호별로 서버에 보관**한다.
+// 이게 있어야 휴대폰에서 하던 것을 컴퓨터에서 이어서 할 수 있다.
+// 자료는 비공개 보관소(witak 버킷)의 progress/<전화번호>.json 파일 하나로 둔다.
+import { validPhone, normalizePhone } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
+
+const URL_BASE = process.env.SUPABASE_URL;
+const KEY = process.env.SUPABASE_SECRET_KEY;
+const BUCKET = 'witak';
+
+function auth(extra = {}) {
+  return { apikey: KEY, Authorization: `Bearer ${KEY}`, ...extra };
+}
+
+function objectUrl(phone) {
+  return `${URL_BASE}/storage/v1/object/${BUCKET}/progress/${phone}.json`;
+}
+
+// 보관소는 한 번 읽은 파일을 한동안 그대로 다시 내준다(캐시).
+// 방금 저장한 내용이 안 보이는 사고가 실제로 났으므로,
+// 읽을 때마다 주소 끝에 시각을 붙이고 '캐시 쓰지 말라'고 알린다.
+function freshUrl(phone) {
+  return `${objectUrl(phone)}?t=${Date.now()}`;
+}
+
+// 이 전화번호로 저장해 둔 내용을 돌려준다 (없으면 null)
+export async function GET(req) {
+  try {
+    if (!URL_BASE || !KEY) {
+      return Response.json({ error: '서버 설정이 끝나지 않았습니다.' }, { status: 500 });
+    }
+    const phone = normalizePhone(new URL(req.url).searchParams.get('phone'));
+    if (!validPhone(phone)) return Response.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+
+    const res = await fetch(freshUrl(phone), {
+      headers: auth({ 'Cache-Control': 'no-cache' }),
+      cache: 'no-store',
+    });
+    if (res.status === 404 || res.status === 400) return Response.json({ data: null });
+    if (!res.ok) throw new Error(await res.text());
+
+    const text = await res.text();
+    let data = null;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = null; // 파일이 깨져 있으면 없는 것으로 본다
+    }
+    return Response.json({ data });
+  } catch (e) {
+    console.error(e);
+    return Response.json({ error: e.message }, { status: 500 });
+  }
+}
+
+// 이 전화번호의 내용을 통째로 덮어쓴다
+export async function POST(req) {
+  try {
+    if (!URL_BASE || !KEY) {
+      return Response.json({ error: '서버 설정이 끝나지 않았습니다.' }, { status: 500 });
+    }
+    const body = await req.json().catch(() => ({}));
+    const phone = normalizePhone(body.phone);
+    if (!validPhone(phone)) return Response.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+    if (!body.data || typeof body.data !== 'object') {
+      return Response.json({ error: '저장할 내용이 없습니다.' }, { status: 400 });
+    }
+
+    const res = await fetch(objectUrl(phone), {
+      method: 'POST',
+      headers: auth({
+        'Content-Type': 'application/json',
+        'x-upsert': 'true',
+        'cache-control': 'max-age=0, no-store',
+      }),
+      body: JSON.stringify(body.data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return Response.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return Response.json({ error: e.message }, { status: 500 });
+  }
+}

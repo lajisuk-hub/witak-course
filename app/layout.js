@@ -1,4 +1,5 @@
 import './globals.css';
+import Boot from './Boot';
 
 export const metadata = {
   title: '국공립 신규위탁 과정 진행',
@@ -16,7 +17,9 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <Boot>{children}</Boot>
+      </body>
     </html>
   );
 }
