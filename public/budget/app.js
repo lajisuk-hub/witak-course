@@ -23,11 +23,11 @@ const CONSTANTS = {
     cook: 1.0,          // 조리원 100%
     aidPartial: 0.3,    // 보조/연장교사 정부지원 30% (4대보험용)
   },
-  // 2025년 기준 보육료 기본값 (원, 월)
+  // 2026년 기준 보육료 기본값 (원, 월) - 보건복지부 2026년도 보육사업안내
   DEFAULT_CHILDCARE_FEE: {
-    age0: 567000,
-    age1: 452000,
-    age2: 375000,
+    age0: 584000,
+    age1: 515000,
+    age2: 426000,
     age3: 280000,
     age4: 280000,
     age5: 280000,
@@ -137,6 +137,50 @@ const state = {
     assetCosts: [],
   },
 };
+
+// =============================================================
+// 자동 저장/불러오기 (탭을 닫거나 다시 열어도 입력한 내용이 남도록)
+// =============================================================
+const AUTOSAVE_KEY = 'witak_budget_autosave_v1';
+
+function loadSavedState() {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== 'object') return;
+    if (typeof saved.currentStep === 'number') state.currentStep = saved.currentStep;
+    if (saved.data && typeof saved.data === 'object') {
+      Object.keys(state.data).forEach(key => {
+        if (!(key in saved.data)) return;
+        const defVal = state.data[key];
+        const savedVal = saved.data[key];
+        if (Array.isArray(defVal)) {
+          if (Array.isArray(savedVal)) state.data[key] = savedVal;
+        } else if (defVal && typeof defVal === 'object') {
+          if (savedVal && typeof savedVal === 'object') Object.assign(defVal, savedVal);
+        } else if (savedVal !== undefined) {
+          state.data[key] = savedVal;
+        }
+      });
+    }
+  } catch (e) {
+    // 저장된 내용을 못 읽어도 무시하고 빈 화면으로 시작
+  }
+}
+
+let saveTimer = null;
+function saveStateNow() {
+  try {
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ currentStep: state.currentStep, data: state.data }));
+  } catch (e) {
+    // 저장 공간이 부족해도 화면 사용에는 지장 없게 무시
+  }
+}
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveStateNow, 400);
+}
 
 // =============================================================
 // 유틸리티 함수
@@ -3481,8 +3525,9 @@ function render() {
   $('#btnPrev').style.visibility = state.currentStep === 0 ? 'hidden' : 'visible';
   $('#btnNext').textContent = state.currentStep === state.totalSteps - 1 ? '완료' : '다음 →';
   $('#btnNext').style.visibility = state.currentStep === state.totalSteps - 1 ? 'hidden' : 'visible';
-  
+
   bindEvents();
+  saveStateNow();
 }
 
 function bindEvents() {
@@ -4488,4 +4533,8 @@ function downloadExcel() {
 // =============================================================
 // 초기 실행
 // =============================================================
+loadSavedState();
 render();
+// 화면 안 어디에 입력해도(타이핑 중에도) 잠시 후 자동 저장
+document.addEventListener('input', scheduleSave, true);
+document.addEventListener('change', scheduleSave, true);
