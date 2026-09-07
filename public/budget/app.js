@@ -3416,7 +3416,7 @@ const steps = [
 function renderTeacherRows() {
   if (state.data.teachers.length === 0) {
     // 기본 교사 한 줄 추가
-    state.data.teachers.push({ type: 'infant', grade: 4, salary: 2127000, count: 1, supportRate: 0.8 });
+    state.data.teachers.push({ type: 'infant', grade: 4, salary: 2346800, count: 1, supportRate: 0.8 });
   }
   // 기존 교사 중 supportRate가 없는 경우 보정
   state.data.teachers.forEach(t => {
@@ -3635,6 +3635,14 @@ function bindEvents() {
           aid: 1.0, extended: 1.0, night: 0.8, cook: 1.0, custom: 0.8
         };
         t.supportRate = rateMap[val] !== undefined ? rateMap[val] : 1.0;
+        // 보조교사/연장교사는 2026년 지원단가 월급(1,139,000원)을 예시로 채워준다.
+        // 이미 직접 입력한 값(교사 추가 시의 기본값이 아닌 값)은 건드리지 않는다.
+        // (2127000/2099100은 예전 영아반 교사 기본값이라 혹시 그 값 그대로면
+        //  손 안 댄 것으로 보고 같이 바꿔 준다)
+        const UNTOUCHED_SALARY = [0, 2346800, 2316100, 2127000, 2099100];
+        if ((val === 'aid' || val === 'extended') && UNTOUCHED_SALARY.includes(t.salary || 0)) {
+          t.salary = 1139000;
+        }
         // custom 선택 시 customName 빈값으로 초기화
         if (val === 'custom' && t.customName === undefined) {
           t.customName = '';
@@ -3672,7 +3680,7 @@ function bindEvents() {
   // 교사 추가
   const addT = $('#btnAddTeacher');
   if (addT) addT.addEventListener('click', () => {
-    state.data.teachers.push({ type: 'infant', grade: 1, salary: 2099100, count: 1, supportRate: 0.8 });
+    state.data.teachers.push({ type: 'infant', grade: 1, salary: 2316100, count: 1, supportRate: 0.8 });
     render();
   });
   
