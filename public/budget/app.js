@@ -74,7 +74,7 @@ const state = {
     ages: { age0: 0, age1: 0, age2: 0, age3: 0, age4: 0, age5: 0, disabled: 0 },
     // 4. 보육료
     childcareFees: { ...CONSTANTS.DEFAULT_CHILDCARE_FEE },
-    disabledFee: 532000,
+    disabledFee: 634000,
     // 5. 교직원 정보
     director: { grade: 18, salary: 3588900, allowance: 0 },
     teachers: [], // [{name, type: 'infant'|'preschool'|'aid'|'extended'|'disabled'|'cook'|'night', grade, salary, count, supportRate}]
