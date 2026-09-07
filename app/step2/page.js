@@ -5,7 +5,6 @@ import { loadAll, markDone } from '@/lib/store';
 import { useMe } from '@/lib/auth';
 import ContactBar from '@/app/ContactBar';
 import { buildBudgetDoc } from '@/lib/budgetDoc';
-import { downloadBlob } from '@/lib/formDoc';
 
 export default function Step2() {
   const { me, ready: authed } = useMe();
@@ -42,15 +41,21 @@ export default function Step2() {
         student: d.applicant || me.name,
         onProgress: setBusy,
       });
-      downloadBlob(r.blob, r.name);
+      const url = URL.createObjectURL(r.blob);
       markDone(2);
-      setResult(r);
+      setResult({ ...r, url });
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy('');
     }
   }
+
+  useEffect(() => {
+    return () => {
+      if (result?.url) URL.revokeObjectURL(result.url);
+    };
+  }, [result?.url]);
 
   if (!authed || !me || !ready) return null;
 
@@ -124,7 +129,16 @@ export default function Step2() {
 
           {result && (
             <div className="info">
-              <b>{result.name}</b> 을 받았습니다.
+              <b>{result.name}</b> 이 완성되었습니다.
+              <br />
+              <a
+                className="btn btn-gold"
+                href={result.url}
+                download={result.name}
+                style={{ display: 'inline-block', marginTop: 8, marginBottom: 8 }}
+              >
+                📥 한글 예산서 파일 저장하기
+              </a>
               <br />
               세입 {result.filled.income.length}개 · 세출 {result.filled.expense.length}개 항목을
               채웠습니다.
