@@ -7,11 +7,11 @@ const CONSTANTS = {
   YEAR: 2026,
   // 4대보험 요율 (사업주 부담)
   INSURANCE: {
-    nationalPension: 0.045,      // 국민연금 사업주부담 (2026년 9.5%의 50%)
+    nationalPension: 0.0475,     // 국민연금 사업주부담 (2026년 9.5%의 50%)
     healthInsurance: 0.03595,    // 건강보험 사업주부담 (2026년 7.19%의 50%)
     longTermCare: 0.1314,        // 장기요양보험 (건강보험료 대비 13.14%)
-    employment: 0.009,           // 고용보험 사업주부담 (실업급여 1.8%의 50%)
-    industrial: 0.0079,          // 산재보험 (보육업종 기본, 업종별 상이)
+    employment: 0.0115,          // 고용보험 사업주부담 (실업급여 0.9% + 고용안정·직업능력개발 0.25%, 150인 미만 기준)
+    industrial: 0.0066,          // 산재보험 (사회복지사업/어린이집 업종 기준, 매년 근로복지공단 고시로 확인 필요)
     retirement: 1/12,            // 퇴직적립금 (연간 1개월분)
   },
   // 인건비 지원율 기본값
@@ -94,7 +94,7 @@ const state = {
     otherParentFees: [],   // [{name, unit, count, months}]
     // 9. 지원율 확인
     supportRates: { ...CONSTANTS.SUPPORT_RATE },
-    industrialRate: 0.0079,
+    industrialRate: 0.0066,
     // 10. 시/군/구 지원 항목 (수기)
     localSupport: [],  // [{name, unit, count, months}]
     // 세입 기타
@@ -151,10 +151,28 @@ const STALE_DEFAULTS = {
   'childcareFees.age0': [567000],
   'childcareFees.age1': [452000],
   'childcareFees.age2': [375000],
+  industrialRate: [0.0079],
 };
 function isStaleDefault(path, value) {
   const list = STALE_DEFAULTS[path];
   return Array.isArray(list) && list.includes(value);
+}
+
+// 교사 목록은 배열이라 위 STALE_DEFAULTS로는 못 잡는다 — 새 교사 추가 때
+// 예시로 채워졌던 예전 급여(호봉과 짝지어 저장돼 있음)만 최신 값으로 올린다.
+// 사용자가 직접 고친 값(호봉·급여 조합이 다름)은 안 건드린다.
+const STALE_TEACHER_SALARY = [
+  { grade: 4, from: 2127000, to: 2346800 },
+  { grade: 1, from: 2099100, to: 2316100 },
+];
+function upgradeStaleTeachers(list) {
+  if (!Array.isArray(list)) return list;
+  list.forEach((t) => {
+    if (!t || t.type !== 'infant') return;
+    const hit = STALE_TEACHER_SALARY.find((s) => s.grade === t.grade && s.from === t.salary);
+    if (hit) t.salary = hit.to;
+  });
+  return list;
 }
 
 function loadSavedState() {
@@ -170,7 +188,9 @@ function loadSavedState() {
         const defVal = state.data[key];
         const savedVal = saved.data[key];
         if (Array.isArray(defVal)) {
-          if (Array.isArray(savedVal)) state.data[key] = savedVal;
+          if (Array.isArray(savedVal)) {
+            state.data[key] = key === 'teachers' ? upgradeStaleTeachers(savedVal) : savedVal;
+          }
         } else if (defVal && typeof defVal === 'object') {
           if (savedVal && typeof savedVal === 'object') {
             Object.keys(savedVal).forEach((k) => {
@@ -1356,10 +1376,10 @@ const steps = [
       
       <div class="info-box">
         <strong>⚙️ 2026년 최신 요율 자동 적용 중</strong><br>
-        • <b>국민연금</b>: 사업주 4.5% 부담 (2026년 9.5%의 절반)<br>
+        • <b>국민연금</b>: 사업주 4.75% 부담 (2026년 9.5%의 절반)<br>
         • <b>건강보험</b>: 사업주 3.595% 부담 (2026년 7.19%의 절반)<br>
         • <b>장기요양보험</b>: 건강보험료 × 13.14%<br>
-        • <b>고용보험</b>: 사업주 0.9% 부담<br>
+        • <b>고용보험</b>: 사업주 1.15% 부담<br>
         • <b>산재보험</b>: 업종별 상이 (아래 직접 입력)<br>
         • <b>퇴직적립금</b>: 연간 1개월분 (8.33%)
       </div>
@@ -1369,7 +1389,7 @@ const steps = [
         <input type="number" class="form-input" id="industrialRate" 
                value="${(state.data.industrialRate*100).toFixed(2)}" 
                step="0.01" min="0" max="10" />
-        <p class="form-hint">💡 어린이집 업종은 보통 0.7~0.9% 사이입니다. 근로복지공단(1588-0075)에서 정확한 요율 확인 가능.</p>
+        <p class="form-hint">💡 어린이집(사회복지사업) 업종은 보통 0.6~0.7% 사이입니다. 근로복지공단(1588-0075)에서 정확한 요율 확인 가능.</p>
       </div>
       
       <h3 class="section-title">📊 상세 산출내역 (급여만 기준)</h3>
@@ -1423,15 +1443,15 @@ const steps = [
       <h4 class="detail-subtitle">🧮 2단계: 요율별 산출 과정</h4>
       <div class="info-box" style="margin-bottom: 12px;">
         <strong>📚 각 보험의 계산 공식</strong><br>
-        • <b>국민연금</b>: 전체 요율 9.0%의 <b>절반(4.5%)</b>을 사업주가 부담<br>
-        &nbsp;&nbsp;&nbsp;→ 산정기준 × 4.5%<br>
+        • <b>국민연금</b>: 전체 요율 9.5%의 <b>절반(4.75%)</b>을 사업주가 부담<br>
+        &nbsp;&nbsp;&nbsp;→ 산정기준 × 4.75%<br>
         • <b>건강보험</b>: 전체 요율 7.19%의 <b>절반(3.595%)</b>을 사업주가 부담<br>
         &nbsp;&nbsp;&nbsp;→ 산정기준 × 3.595%<br>
         • <b>장기요양보험</b>: <b>건강보험료</b>에 13.14% 추가<br>
         &nbsp;&nbsp;&nbsp;→ 건강보험료 × 13.14% (주의! 산정기준이 아닌 건보료 기준)<br>
-        • <b>고용보험</b>: 사업주 부담 0.9%<br>
-        &nbsp;&nbsp;&nbsp;→ 산정기준 × 0.9%<br>
-        • <b>산재보험</b>: 업종별 상이 (어린이집 보통 0.7~0.9%)<br>
+        • <b>고용보험</b>: 사업주 부담 1.15%<br>
+        &nbsp;&nbsp;&nbsp;→ 산정기준 × 1.15%<br>
+        • <b>산재보험</b>: 업종별 상이 (어린이집 보통 0.6~0.7%)<br>
         &nbsp;&nbsp;&nbsp;→ 산정기준 × 산재요율<br>
         • <b>퇴직적립금</b>: 연간 1개월분 = 연봉의 1/12 ≒ 8.33%<br>
         &nbsp;&nbsp;&nbsp;→ 산정기준 ÷ 12 = 월 평균급여 1개월분
@@ -1574,11 +1594,11 @@ const steps = [
               const ins = CONSTANTS.INSURANCE;
               const wHealth = wBase * ins.healthInsurance;
               return `
-                <b>국민연금</b>: ${fmt(wBase)}원 × 4.5% = <b class="formula-result">${fmt(wBase * ins.nationalPension)}원</b><br>
+                <b>국민연금</b>: ${fmt(wBase)}원 × 4.75% = <b class="formula-result">${fmt(wBase * ins.nationalPension)}원</b><br>
                 <b>건강보험</b>: ${fmt(wBase)}원 × 3.595% = <b class="formula-result">${fmt(wHealth)}원</b><br>
                 <b>장기요양</b>: ${fmt(wHealth)}원 × 13.14% = <b class="formula-result">${fmt(wHealth * ins.longTermCare)}원</b>
                 <span style="font-size: 0.85rem; color: var(--color-text-soft);">※ 건보료 기준!</span><br>
-                <b>고용보험</b>: ${fmt(wBase)}원 × 0.9% = <b class="formula-result">${fmt(wBase * ins.employment)}원</b><br>
+                <b>고용보험</b>: ${fmt(wBase)}원 × 1.15% = <b class="formula-result">${fmt(wBase * ins.employment)}원</b><br>
                 <b>산재보험</b>: ${fmt(wBase)}원 × ${(state.data.industrialRate*100).toFixed(2)}% = <b class="formula-result">${fmt(wBase * state.data.industrialRate)}원</b><br>
                 <b>퇴직적립금</b>: ${fmt(wBase)}원 ÷ 12 = <b class="formula-result">${fmt(wBase * ins.retirement)}원</b>
               `;
@@ -2197,15 +2217,15 @@ const steps = [
       <h3 class="section-title">2️⃣ 각 보험의 계산 공식 (학습)</h3>
       <div class="info-box">
         <strong>📚 2026년 기준 요율 해설</strong><br>
-        • <b>국민연금</b>: 전체 9.0% 중 <b>사업주 4.5%</b> 부담<br>
-        &nbsp;&nbsp;&nbsp;→ 산정기준 × 4.5%<br>
+        • <b>국민연금</b>: 전체 9.5% 중 <b>사업주 4.75%</b> 부담<br>
+        &nbsp;&nbsp;&nbsp;→ 산정기준 × 4.75%<br>
         • <b>건강보험</b>: 전체 7.19% 중 <b>사업주 3.595%</b> 부담<br>
         &nbsp;&nbsp;&nbsp;→ 산정기준 × 3.595%<br>
         • <b>장기요양보험</b>: <b>건강보험료</b>를 기준으로 13.14%<br>
         &nbsp;&nbsp;&nbsp;⚠️ 주의! 산정기준이 아니라 <b>건보료</b>에 곱함<br>
-        • <b>고용보험</b>: 사업주 <b>0.9%</b> 부담<br>
-        &nbsp;&nbsp;&nbsp;→ 산정기준 × 0.9%<br>
-        • <b>산재보험</b>: 업종별 상이 (어린이집 0.7~0.9%)<br>
+        • <b>고용보험</b>: 사업주 <b>1.15%</b> 부담<br>
+        &nbsp;&nbsp;&nbsp;→ 산정기준 × 1.15%<br>
+        • <b>산재보험</b>: 업종별 상이 (어린이집 0.6~0.7%)<br>
         &nbsp;&nbsp;&nbsp;→ 산정기준 × 산재요율 (현재 ${(state.data.industrialRate*100).toFixed(2)}%)<br>
         • <b>퇴직적립금</b>: 연간 1개월분 = 연봉의 1/12 ≒ 8.33%<br>
         &nbsp;&nbsp;&nbsp;→ 산정기준 ÷ 12
@@ -2345,11 +2365,11 @@ const steps = [
         <div style="margin-top: 10px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid var(--color-primary);">
           <b style="color: var(--color-primary-dark);">📌 STEP 5. 각 보험료 계산 (산정기준 × 요율)</b><br>
           <span class="formula-expr" style="display: block; margin-top: 8px; font-variant-numeric: tabular-nums;">
-            <b>국민연금</b>: ${fmt(base)}원 × 4.5% = <b class="formula-result">${fmt(pension)}원</b><br>
+            <b>국민연금</b>: ${fmt(base)}원 × 4.75% = <b class="formula-result">${fmt(pension)}원</b><br>
             <b>건강보험</b>: ${fmt(base)}원 × 3.595% = <b class="formula-result">${fmt(health)}원</b><br>
             <b>장기요양</b>: ${fmt(health)}원 × 13.14% = <b class="formula-result">${fmt(ltCare)}원</b>
             <span style="font-size: 0.85rem; color: var(--color-text-soft);">※ 건보료 기준!</span><br>
-            <b>고용보험</b>: ${fmt(base)}원 × 0.9% = <b class="formula-result">${fmt(employment)}원</b><br>
+            <b>고용보험</b>: ${fmt(base)}원 × 1.15% = <b class="formula-result">${fmt(employment)}원</b><br>
             <b>산재보험</b>: ${fmt(base)}원 × ${(state.data.industrialRate*100).toFixed(2)}% = <b class="formula-result">${fmt(industrial)}원</b><br>
             <b>퇴직적립금</b>: ${fmt(base)}원 ÷ 12 = <b class="formula-result">${fmt(retirement)}원</b>
           </span>
@@ -2367,7 +2387,7 @@ const steps = [
       <div class="tip-box" style="margin-top: 16px;">
         <strong>💡 참고</strong><br>
         • 산재보험 요율은 STEP 11에서 입력한 값이에요 (현재: ${(state.data.industrialRate*100).toFixed(2)}%)<br>
-        • 2026년 요율 기준: 국민연금 9.0%, 건강보험 7.19%, 장기요양 13.14%<br>
+        • 2026년 요율 기준: 국민연금 9.5%, 건강보험 7.19%, 장기요양 13.14%<br>
         • 요율을 바꾸고 싶으면 STEP 11로 돌아가세요!
       </div>
     </div>
@@ -2720,10 +2740,10 @@ const steps = [
             <table class="budget-table">
               <thead><tr><th>항목</th><th>요율</th><th>연 금액</th></tr></thead>
               <tbody>
-                <tr><td>국민연금 (사업주)</td><td>4.5%</td><td class="total-cell">${fmt(insBase * CONSTANTS.INSURANCE.nationalPension)}원</td></tr>
+                <tr><td>국민연금 (사업주)</td><td>4.75%</td><td class="total-cell">${fmt(insBase * CONSTANTS.INSURANCE.nationalPension)}원</td></tr>
                 <tr><td>건강보험 (사업주)</td><td>3.595%</td><td class="total-cell">${fmt(insBase * CONSTANTS.INSURANCE.healthInsurance)}원</td></tr>
                 <tr><td>장기요양보험</td><td>건보료 × 13.14%</td><td class="total-cell">${fmt(insBase * CONSTANTS.INSURANCE.healthInsurance * CONSTANTS.INSURANCE.longTermCare)}원</td></tr>
-                <tr><td>고용보험 (사업주)</td><td>0.9%</td><td class="total-cell">${fmt(insBase * CONSTANTS.INSURANCE.employment)}원</td></tr>
+                <tr><td>고용보험 (사업주)</td><td>1.15%</td><td class="total-cell">${fmt(insBase * CONSTANTS.INSURANCE.employment)}원</td></tr>
                 <tr><td>산재보험</td><td>${(state.data.industrialRate*100).toFixed(2)}%</td><td class="total-cell">${fmt(insBase * state.data.industrialRate)}원</td></tr>
                 <tr class="subtotal-row"><td colspan="2">4대보험 소계</td><td class="total-cell">${fmt(insTotal)}원</td></tr>
                 <tr><td>퇴직적립금</td><td>1/12 (8.33%)</td><td class="total-cell">${fmt(retTotal)}원</td></tr>
