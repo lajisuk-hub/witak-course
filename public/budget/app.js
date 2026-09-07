@@ -143,6 +143,20 @@ const state = {
 // =============================================================
 const AUTOSAVE_KEY = 'witak_budget_autosave_v1';
 
+// 보육료 같은 기본값을 코드에서 새로 고치면, 사용자가 직접 손대지 않고
+// "예전 기본값 그대로" 둔 칸은 저장된 옛 값이 아니라 최신 기본값을 쓰도록 한다.
+// (기본값을 바꿀 때마다 여기에 "예전 기본값"을 추가해 둘 것)
+const STALE_DEFAULTS = {
+  disabledFee: [532000],
+  'childcareFees.age0': [567000],
+  'childcareFees.age1': [452000],
+  'childcareFees.age2': [375000],
+};
+function isStaleDefault(path, value) {
+  const list = STALE_DEFAULTS[path];
+  return Array.isArray(list) && list.includes(value);
+}
+
 function loadSavedState() {
   try {
     const raw = localStorage.getItem(AUTOSAVE_KEY);
@@ -158,8 +172,14 @@ function loadSavedState() {
         if (Array.isArray(defVal)) {
           if (Array.isArray(savedVal)) state.data[key] = savedVal;
         } else if (defVal && typeof defVal === 'object') {
-          if (savedVal && typeof savedVal === 'object') Object.assign(defVal, savedVal);
+          if (savedVal && typeof savedVal === 'object') {
+            Object.keys(savedVal).forEach((k) => {
+              if (isStaleDefault(`${key}.${k}`, savedVal[k])) return; // 예전 기본값이면 최신 기본값 유지
+              defVal[k] = savedVal[k];
+            });
+          }
         } else if (savedVal !== undefined) {
+          if (isStaleDefault(key, savedVal)) return; // 예전 기본값이면 최신 기본값 유지
           state.data[key] = savedVal;
         }
       });
