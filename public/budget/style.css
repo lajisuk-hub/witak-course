@@ -102,10 +102,20 @@ body::before {
 .progress-wrap {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   flex: 1;
-  max-width: 280px;
+  max-width: 300px;
   min-width: 200px;
+}
+
+/* 쓰신 내용이 담기고 있다는 것을 눈으로 보여 주는 줄 */
+#saveState {
+  flex: 0 0 100%;
+  margin-top: 2px;
+  text-align: right;
+  font-weight: 400;
+  opacity: 0.85;
 }
 
 .progress-bar {

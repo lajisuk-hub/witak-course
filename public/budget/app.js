@@ -140,8 +140,59 @@ const state = {
 
 // =============================================================
 // 자동 저장/불러오기 (탭을 닫거나 다시 열어도 입력한 내용이 남도록)
+//
+//  ① 이 브라우저에 담는다 — 빠르고, 인터넷이 끊겨도 쓰던 것이 남는다
+//  ② 전화번호로 **서버에도 함께** 담는다 — 기기가 바뀌어도 이어서 쓰신다
+//
+// ★ 2026-09-09 사고
+//   예산서만 이 브라우저에 담겨 있어서, 기기를 바꾸거나 브라우저가 저장분을
+//   지우면(아이폰 사파리는 7일이면 지운다) 통째로 사라졌다. 게다가 저장된 것을
+//   못 읽으면 **바로 다음 줄에서 빈 값으로 덮어써** 되돌릴 수도 없었다.
+//   그래서 이제부터 지키는 철칙 —
+//     · 못 읽었으면 **절대 덮어쓰지 않는다** (원본은 따로 남긴다)
+//     · **빈 내용이 채워진 내용을 이길 수 없다**
+//     · 서버에도 함께 담고, 줄어드는 저장이 오면 서버가 예전 것을 백업한다
 // =============================================================
-const AUTOSAVE_KEY = 'witak_budget_autosave_v1';
+const AUTOSAVE_BASE = 'witak_budget_autosave_v1';
+
+// 한 컴퓨터를 여러 분이 쓰실 수 있으니 전화번호마다 따로 담는다.
+// (2차시 화면이 iframe 주소에 ?phone= 으로 알려 준다)
+const MY_PHONE = (function () {
+  try {
+    return (new URLSearchParams(location.search).get('phone') || '').replace(/[^0-9]/g, '');
+  } catch (e) {
+    return '';
+  }
+})();
+const AUTOSAVE_KEY = MY_PHONE ? AUTOSAVE_BASE + ':' + MY_PHONE : AUTOSAVE_BASE;
+
+// 기본값 한 벌을 그대로 떠 둔다 — "얼마나 채우셨는지"를 재는 자로 쓴다
+const DEFAULT_DATA = JSON.parse(JSON.stringify(state.data));
+
+/** 기본값과 다른 곳이 얼마나 되는지 (0 이면 아직 아무것도 안 쓰신 것) */
+function contentSize(data, base) {
+  if (!data || typeof data !== 'object') return 0;
+  const b = base || {};
+  let n = 0;
+  Object.keys(data).forEach((k) => {
+    const v = data[k];
+    const bv = b[k];
+    const bothPlain =
+      v && typeof v === 'object' && !Array.isArray(v) &&
+      bv && typeof bv === 'object' && !Array.isArray(bv);
+    if (bothPlain) {
+      n += contentSize(v, bv);
+    } else if (JSON.stringify(v === undefined ? null : v) !== JSON.stringify(bv === undefined ? null : bv)) {
+      n += JSON.stringify(v === undefined ? null : v).length;
+    }
+  });
+  return n;
+}
+
+/** 지금 이 화면에 쓰여 있는 내용의 양 */
+function mySize() {
+  return contentSize(state.data, DEFAULT_DATA);
+}
 
 // 보육료 같은 기본값을 코드에서 새로 고치면, 사용자가 직접 손대지 않고
 // "예전 기본값 그대로" 둔 칸은 저장된 옛 값이 아니라 최신 기본값을 쓰도록 한다.
@@ -175,51 +226,194 @@ function upgradeStaleTeachers(list) {
   return list;
 }
 
-function loadSavedState() {
-  try {
-    const raw = localStorage.getItem(AUTOSAVE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    if (!saved || typeof saved !== 'object') return;
-    if (typeof saved.currentStep === 'number') state.currentStep = saved.currentStep;
-    if (saved.data && typeof saved.data === 'object') {
-      Object.keys(state.data).forEach(key => {
-        if (!(key in saved.data)) return;
-        const defVal = state.data[key];
-        const savedVal = saved.data[key];
-        if (Array.isArray(defVal)) {
-          if (Array.isArray(savedVal)) {
-            state.data[key] = key === 'teachers' ? upgradeStaleTeachers(savedVal) : savedVal;
-          }
-        } else if (defVal && typeof defVal === 'object') {
-          if (savedVal && typeof savedVal === 'object') {
-            Object.keys(savedVal).forEach((k) => {
-              if (isStaleDefault(`${key}.${k}`, savedVal[k])) return; // 예전 기본값이면 최신 기본값 유지
-              defVal[k] = savedVal[k];
-            });
-          }
-        } else if (savedVal !== undefined) {
-          if (isStaleDefault(key, savedVal)) return; // 예전 기본값이면 최신 기본값 유지
-          state.data[key] = savedVal;
+/** 담아 둔 내용 한 벌을 지금 화면 상태에 얹는다 */
+function applySaved(saved) {
+  if (!saved || typeof saved !== 'object') return;
+  if (typeof saved.currentStep === 'number') state.currentStep = saved.currentStep;
+  if (saved.data && typeof saved.data === 'object') {
+    Object.keys(state.data).forEach(key => {
+      if (!(key in saved.data)) return;
+      const defVal = state.data[key];
+      const savedVal = saved.data[key];
+      if (Array.isArray(defVal)) {
+        if (Array.isArray(savedVal)) {
+          state.data[key] = key === 'teachers' ? upgradeStaleTeachers(savedVal) : savedVal;
         }
-      });
-    }
-  } catch (e) {
-    // 저장된 내용을 못 읽어도 무시하고 빈 화면으로 시작
+      } else if (defVal && typeof defVal === 'object') {
+        if (savedVal && typeof savedVal === 'object') {
+          Object.keys(savedVal).forEach((k) => {
+            if (isStaleDefault(`${key}.${k}`, savedVal[k])) return; // 예전 기본값이면 최신 기본값 유지
+            defVal[k] = savedVal[k];
+          });
+        }
+      } else if (savedVal !== undefined) {
+        if (isStaleDefault(key, savedVal)) return; // 예전 기본값이면 최신 기본값 유지
+        state.data[key] = savedVal;
+      }
+    });
   }
 }
 
+// 저장된 내용을 못 읽었다 → 이 화면에서는 아무것도 덮어쓰지 않는다
+let loadFailed = false;
+// 사용자가 이 화면에서 한 글자라도 고쳤다
+let touched = false;
+
+function readRaw(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    return null;
+  }
+}
+
+/** 이 브라우저에 지금 담겨 있는 내용의 양 */
+function storedSize() {
+  const raw = readRaw(AUTOSAVE_KEY);
+  if (!raw) return 0;
+  try {
+    const saved = JSON.parse(raw);
+    if (typeof saved.size === 'number') return saved.size;
+    return contentSize(saved.data, DEFAULT_DATA);
+  } catch (e) {
+    return -1; // 못 읽는 내용이 들어 있다 (덮어쓰면 안 된다)
+  }
+}
+
+function loadSavedState() {
+  let raw = readRaw(AUTOSAVE_KEY);
+  // 전화번호별로 나누기 전(예전)에 담아 두신 내용이 있으면 그대로 이어받는다
+  if (!raw && MY_PHONE) raw = readRaw(AUTOSAVE_BASE);
+  if (!raw) return;
+
+  let saved = null;
+  try {
+    saved = JSON.parse(raw);
+  } catch (e) {
+    saved = null;
+  }
+  if (!saved || typeof saved !== 'object') {
+    // ★ 못 읽었다. 예전에는 여기서 곧바로 빈 값으로 덮어써 내용이 사라졌다.
+    //   이제는 덮어쓰지 않고, 원본도 따로 남겨 둔다.
+    loadFailed = true;
+    try {
+      localStorage.setItem(AUTOSAVE_KEY + '__broken', raw);
+    } catch (e) {
+      /* 남겨 두지 못해도 덮어쓰지 않는 것이 더 중요하다 */
+    }
+    return;
+  }
+  applySaved(saved);
+}
+
+// ── 이 브라우저에 담기 ───────────────────────────
 let saveTimer = null;
 function saveStateNow() {
+  if (loadFailed) return; // 못 읽은 상태에서는 절대 덮어쓰지 않는다
+  const size = mySize();
+  const kept = storedSize();
+  if (kept !== 0 && size === 0) return; // ★ 빈 내용이 채워진 내용을 이길 수 없다
   try {
-    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ currentStep: state.currentStep, data: state.data }));
+    localStorage.setItem(
+      AUTOSAVE_KEY,
+      JSON.stringify({ at: new Date().toISOString(), size: size, currentStep: state.currentStep, data: state.data })
+    );
+    showSaved();
   } catch (e) {
     // 저장 공간이 부족해도 화면 사용에는 지장 없게 무시
   }
+  schedulePush(); // 서버에도 곧 담는다
 }
 function scheduleSave() {
+  touched = true;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveStateNow, 400);
+}
+
+// ── 서버에도 함께 담기 (기기가 바뀌어도 이어서 쓰시라고) ──
+let pushTimer = null;
+let pulled = false; // 서버 내용을 한 번이라도 제대로 받아 봤는가
+
+function schedulePush() {
+  if (!MY_PHONE) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(function () {
+    pushRemote();
+  }, 2000);
+}
+
+/**
+ * 지금 내용을 서버에 담는다.
+ * ★ 빈 내용은 올리지 않는다. 서버 내용을 못 받아 본 상태에서도 올리지 않는다.
+ *   (그래야 막 열어 빈 브라우저가 서버에 잘 담긴 예산서를 지우지 못한다)
+ */
+function pushRemote(opts) {
+  const o = opts || {};
+  if (!MY_PHONE) return;
+  clearTimeout(pushTimer);
+  if (loadFailed && !o.force) return;
+  const size = mySize();
+  if (!o.force && size === 0) return;
+  if (!o.force && !pulled) return;
+  try {
+    fetch('/api/budget', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: MY_PHONE,
+        force: !!o.force,
+        at: new Date().toISOString(),
+        size: size,
+        currentStep: state.currentStep,
+        data: state.data,
+      }),
+      keepalive: !!o.keepalive,
+    }).catch(function () {});
+  } catch (e) {
+    /* 서버에 못 담아도 이 브라우저에는 남아 있으므로 그냥 넘어간다 */
+  }
+}
+
+/** 서버에 담아 둔 내용을 받아 이 화면과 맞춘다 (화면을 연 뒤 한 번) */
+function pullRemote() {
+  if (!MY_PHONE) return;
+  fetch('/api/budget?phone=' + encodeURIComponent(MY_PHONE), { cache: 'no-store' })
+    .then(function (res) {
+      if (!res.ok) throw new Error('불러오기 실패');
+      return res.json();
+    })
+    .then(function (json) {
+      pulled = true;
+      const remote = json && json.data && typeof json.data === 'object' ? json.data : null;
+      const there = remote ? Number(remote.size) || 0 : 0;
+      const here = loadFailed ? -1 : mySize();
+
+      // 서버 쪽이 더 알차면 그것으로 되살린다.
+      // 단, 이 화면에서 이미 고치고 계시면 건드리지 않는다(쓰시던 것이 날아가면 안 되니까).
+      if (there > 0 && there > here && !(touched && here > 0)) {
+        state.data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+        applySaved(remote);
+        loadFailed = false; // 서버 것으로 되살렸으니 이제 담아도 안전하다
+        render(); // render 안에서 이 브라우저에도 담긴다
+        showSaved('서버에 담아 두신 예산서를 불러왔습니다');
+        return;
+      }
+      if (here > 0) pushRemote(); // 이 브라우저 것이 더 알차면 서버에 올려 둔다
+    })
+    .catch(function () {
+      /* 인터넷이 느리거나 끊겼다 — 이 브라우저 내용으로 그냥 진행한다 */
+    });
+}
+
+/** 화면 위쪽에 "자동 저장됨 · 방금" 을 보여 준다 */
+function showSaved(message) {
+  const el = document.getElementById('saveState');
+  if (!el) return;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const where = MY_PHONE ? '이 기기와 서버에' : '이 기기에';
+  el.textContent = message ? '✔ ' + message : '✔ ' + where + ' 자동 저장됨 · ' + hh + ':' + mm;
 }
 
 // =============================================================
@@ -3994,11 +4188,23 @@ function bindEvents() {
   if (bd) bd.addEventListener('click', downloadExcel);
   
   // 초기화
+  // (자동 저장이 생긴 뒤로는 화면만 새로 고치면 저장해 둔 내용이 되살아난다.
+  //  그래서 담아 둔 것까지 확실히 지운다)
   const br = $('#btnReset');
   if (br) br.addEventListener('click', () => {
-    if (confirm('처음부터 다시 시작하시겠습니까? 모든 데이터가 삭제됩니다.')) {
-      location.reload();
+    if (!confirm('처음부터 다시 시작하시겠습니까? 지금까지 쓰신 예산서 내용이 모두 지워집니다.')) return;
+    state.currentStep = 0;
+    state.data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    loadFailed = false;
+    touched = false;
+    try {
+      localStorage.removeItem(AUTOSAVE_KEY);
+      if (MY_PHONE) localStorage.removeItem(AUTOSAVE_BASE);
+    } catch (e) {
+      /* 못 지워도 아래에서 빈 내용으로 덮어쓴다 */
     }
+    pushRemote({ force: true }); // 서버에도 "비웠다"고 알린다 (예전 것은 서버가 백업해 둔다)
+    render();
   });
 }
 
@@ -4586,3 +4792,14 @@ render();
 // 화면 안 어디에 입력해도(타이핑 중에도) 잠시 후 자동 저장
 document.addEventListener('input', scheduleSave, true);
 document.addEventListener('change', scheduleSave, true);
+
+// 서버에 담아 둔 내용이 더 알차면 그것으로 되살린다 (다른 기기에서 쓰시던 것)
+pullRemote();
+
+// 화면을 닫거나 다른 앱으로 넘어갈 때, 아직 못 올린 내용을 마저 올린다
+window.addEventListener('pagehide', function () {
+  pushRemote({ keepalive: true });
+});
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden') pushRemote({ keepalive: true });
+});

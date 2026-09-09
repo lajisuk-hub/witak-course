@@ -79,17 +79,18 @@ export default function Step2() {
             <br />③ 받은 엑셀을 <b>맨 아래 칸에 올리시면</b> 한글 예산서가 만들어집니다.
           </p>
           <div className="warn" style={{ marginTop: 12 }}>
-            <b>작성 중인 내용은 이 컴퓨터(브라우저)에 자동으로 저장</b>되어, 링크를 나갔다가 다시
-            열어도 이어서 작성하실 수 있습니다. 단, <b>다른 컴퓨터나 휴대폰에서는 이어지지 않으니</b>{' '}
-            같은 기기에서 계속 작성해 주세요. 다 마치신 뒤 <b>받으신 엑셀 파일도 컴퓨터에 보관</b>해
-            두시면, 나중에 고치실 때 그 엑셀만 다시 올려 한글 예산서를 새로 받으실 수 있습니다.
+            <b>작성 중인 내용은 전화번호로 자동 저장</b>됩니다. 화면 오른쪽 위에 「자동 저장됨」이
+            뜨면 담긴 것입니다. 나갔다가 다시 들어오셔도, <b>휴대폰·다른 컴퓨터에서 들어오셔도</b>{' '}
+            같은 전화번호로 로그인하시면 이어서 작성하실 수 있습니다. 다 마치신 뒤{' '}
+            <b>받으신 엑셀 파일도 컴퓨터에 보관</b>해 두시면, 나중에 고치실 때 그 엑셀만 다시 올려
+            한글 예산서를 새로 받으실 수 있습니다.
           </div>
         </div>
 
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <iframe
             ref={frameRef}
-            src="/budget/index.html"
+            src={`/budget/index.html?phone=${encodeURIComponent(me.phone)}`}
             title="예산서 만들기"
             style={{ width: '100%', height: '78vh', border: 'none', display: 'block' }}
           />
