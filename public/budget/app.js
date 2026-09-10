@@ -4702,8 +4702,13 @@ function downloadExcel() {
   }
   
   // 예비비
+  // ★ 관(1000)만 적으면 한글 예산서로 옮길 때 자리를 못 찾는다.
+  //   원장님 서식의 예비비 칸은 **목 코드 1011** 이라 관·항·목을 모두 적어야
+  //   금액과 산출기초가 한글 예산서에 채워진다 (2026-09-10 교훈).
   if (state.data.reserveFund > 0) {
-    expRows.push(['', '1000 예비비', '', '', state.data.reserveFund, '예비비', state.data.reserveFund, 1, 1, state.data.reserveFund]);
+    // 예비비는 단가 × 인원 × 개월로 나눠 쓰는 항목이 아니라서
+    // 단가·인원·개월은 비우고 합계만 적는다 ("예비비 = 1,234천원" 으로 나온다)
+    expRows.push(['', '1000 예비비', '1010 예비비', '1011 예비비', state.data.reserveFund, '예비비', '', '', '', state.data.reserveFund]);
   }
   
   expRows.push([]);
