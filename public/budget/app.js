@@ -879,25 +879,8 @@ function initializeExpenseSamples() {
     { name: '급간식비 (1일 4,000원 × 20일)', unit: 80000, count: cap, months: 12 },
   ];
 
-  // 수익자부담 지출 (세입에서 자동 복사)
-  const parentExpenses = [];
-  state.data.specialActivities.forEach(a => {
-    parentExpenses.push({
-      name: a.name || '특별활동',
-      unit: a.unit || a.fee || 0,
-      count: a.count || 0,
-      months: a.months || 12
-    });
-  });
-  state.data.otherParentFees.forEach(a => {
-    parentExpenses.push({
-      name: a.name || '기타경비',
-      unit: a.unit || a.fee || 0,
-      count: a.count || 0,
-      months: a.months || 12
-    });
-  });
-  state.data.parentFeeExpenses = parentExpenses;
+  // 수익자부담 지출 (세입에서 자동 복사 — syncParentFeeExpenses 가 늘 맞춰 준다)
+  syncParentFeeExpenses();
 
   // 재산조성비
   state.data.facilityCosts = [
@@ -913,6 +896,37 @@ function initializeExpenseSamples() {
   ];
 
   state.data.expensesInitialized = true;
+}
+
+// =============================================================
+// 세입 수익자부담 → 세출 수익자부담 자동 맞추기
+// =============================================================
+// 부모님께 받은 돈(특별활동비·기타필요경비)은 그대로 지출되어야 해서
+// 세입과 세출이 반드시 같아야 한다. 예전에는 세출을 **처음 만들 때 한 번만**
+// 복사해서, 세입을 나중에 고치면 세출에는 옛 값이 그대로 남았다
+// (원장님 제보 2026-09-10 — 같은 내용을 두 번 적어야 해 번거로웠음).
+// 이제는 화면을 그릴 때마다 세입 내용을 그대로 옮겨 담는다.
+function syncParentFeeExpenses() {
+  const rows = [];
+  (state.data.specialActivities || []).forEach(a => {
+    rows.push({
+      kind: 'special',                 // 세출 411 특별활동비 지출
+      name: a.name || '특별활동',
+      unit: a.unit || a.fee || 0,
+      count: a.count || 0,
+      months: a.months || 0,
+    });
+  });
+  (state.data.otherParentFees || []).forEach(a => {
+    rows.push({
+      kind: 'other',                   // 세출 421 기타 필요경비
+      name: a.name || '기타경비',
+      unit: a.unit || a.fee || 0,
+      count: a.count || 0,
+      months: a.months || 0,
+    });
+  });
+  state.data.parentFeeExpenses = rows;
 }
 
 // =============================================================
@@ -2751,19 +2765,29 @@ const steps = [
     <div class="card step">
       <span class="step-badge">STEP 20 / 24 · 세출 수익자부담</span>
       <h2 class="card-title">💸 수익자부담 지출 (자동 불러오기)</h2>
-      <p class="card-subtitle">세입에서 작성한 특별활동비·기타필요경비를 그대로 불러왔어요.</p>
+      <p class="card-subtitle">세입에서 작성한 특별활동비·기타필요경비가 <b>자동으로</b> 들어옵니다. 따로 적지 않으셔도 돼요.</p>
       
       <div class="info-box">
         <strong>🔗 왜 세입과 같아야 하나요?</strong><br>
-        부모님께 받은 돈은 <b>그대로 지출</b>되어야 해요. 그래서 세입의 수익자부담 = 세출의 수익자부담이어야 합니다!
+        부모님께 받은 돈은 <b>그대로 지출</b>되어야 해요. 그래서 세입의 수익자부담 = 세출의 수익자부담이어야 합니다!<br>
+        그래서 이 화면은 <b>세입에 적으신 그대로</b> 보여 드리기만 합니다.
       </div>
       
-      <h3 class="section-title">특별활동비 + 기타필요경비</h3>
+      <h3 class="section-title">411 특별활동비 지출</h3>
       <table class="budget-table">
-        <thead><tr><th>항목명</th><th>단가</th><th>인원</th><th>개월</th><th>합계</th><th></th></tr></thead>
-        <tbody id="parentExpTable">${renderFeeRows('parentFeeExpenses')}</tbody>
+        <thead><tr><th>항목명</th><th>단가</th><th>인원</th><th>개월</th><th>합계</th></tr></thead>
+        <tbody id="parentExpTable">${renderReadonlyFeeRows('special')}</tbody>
       </table>
-      <button class="btn-add" data-add="parentFeeExpenses">+ 수익자부담 항목 추가</button>
+
+      <h3 class="section-title" style="margin-top: 18px;">421 기타 필요경비</h3>
+      <table class="budget-table">
+        <thead><tr><th>항목명</th><th>단가</th><th>인원</th><th>개월</th><th>합계</th></tr></thead>
+        <tbody id="parentExpTable2">${renderReadonlyFeeRows('other')}</tbody>
+      </table>
+      <p style="margin: 10px 0 0; color: var(--color-text-soft); font-size: 0.92rem;">
+        ✏️ 고치실 내용이 있으면 <b>세입 수익자부담(STEP 9)</b> 에서 고쳐 주세요. 여기에 바로 따라옵니다.
+      </p>
+      <button class="btn btn-ghost" data-goto="9" style="margin-top: 10px;">↩ 세입 수익자부담 화면으로 가서 고치기</button>
       
       <ul class="check-list" style="margin-top: 20px;">
         <li class="${balanced ? 'ok' : 'warn'}">
@@ -2781,7 +2805,7 @@ const steps = [
       ${!balanced ? `
         <div class="warn-box" style="margin-top: 16px;">
           <strong>⚠️ 세입과 세출이 달라요!</strong><br>
-          차이: ${fmt(Math.abs(parentIn - parentOut))}원. 세입(STEP 8)으로 돌아가거나, 위에서 항목을 수정해주세요.
+          차이: ${fmt(Math.abs(parentIn - parentOut))}원. 세입 수익자부담(STEP 9)을 다시 확인해 주세요.
         </div>
       ` : `
         <div class="success-box" style="margin-top: 16px;">
@@ -3739,10 +3763,36 @@ function renderFeeRows(key) {
   }).join('');
 }
 
+// 세입에서 자동으로 따라오는 표(수익자부담 지출)는 고칠 수 없게 보여만 준다.
+// 여기서 고칠 수 있게 두면 세입과 값이 어긋나 심사에서 지적을 받는다.
+function renderReadonlyFeeRows(kind) {
+  const items = (state.data.parentFeeExpenses || []).filter(a =>
+    kind === 'other' ? a.kind === 'other' : a.kind !== 'other'
+  );
+  if (!items.length) {
+    return '<tr><td colspan="5" style="text-align:center; color: var(--color-text-soft);">세입 수익자부담에 적으신 내용이 아직 없어요</td></tr>';
+  }
+  return items.map(item => {
+    const unit = item.unit || item.fee || 0;
+    const total = unit * (item.count || 0) * (item.months || 0);
+    return `
+      <tr>
+        <td>${item.name || ''}</td>
+        <td>${fmt(unit)}</td>
+        <td>${fmt(item.count || 0)}</td>
+        <td>${fmt(item.months || 0)}</td>
+        <td class="total-cell">${fmt(total)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
 // =============================================================
 // 렌더 & 이벤트 바인딩
 // =============================================================
 function render() {
+  // 세입 수익자부담을 세출에 그대로 옮긴다 (두 번 적을 필요 없게)
+  syncParentFeeExpenses();
   $('#main').innerHTML = steps[state.currentStep]();
   
   // 진행률
@@ -4181,6 +4231,18 @@ function bindEvents() {
       state.data.reserveFund = Math.round(diff);
       render();
     }
+  });
+  
+  // 다른 단계로 바로 가기 (예: 세출 수익자부담 → 세입 수익자부담)
+  $$('[data-goto]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const to = num(btn.dataset.goto);
+      if (to >= 0 && to < state.totalSteps) {
+        state.currentStep = to;
+        render();
+        window.scrollTo(0, 0);
+      }
+    });
   });
   
   // 엑셀 다운로드
@@ -4675,12 +4737,29 @@ function downloadExcel() {
   }
   
   // 수익자부담 지출 (400)
+  // 세입에 적으신 그대로 옮기되, 원장님 서식의 목 코드에 맞춰 **둘로 나눈다.**
+  //   세입 211 특별활동비   → 세출 411 특별활동비 지출
+  //   세입 221 기타필요경비 → 세출 421 기타 필요경비
+  // (예전에는 둘을 합쳐 411 한 줄로 보내, 입학준비금·석식비까지 특별활동비 칸에
+  //  들어갔다 — 2026-09-10 수정)
   if (calc.parentFeeExpense() > 0) {
+    const 수익자 = state.data.parentFeeExpenses || [];
+    const 특별 = 수익자.filter(a => a.kind !== 'other');
+    const 기타 = 수익자.filter(a => a.kind === 'other');
+    const 합 = (list) => list.reduce((s2, a) => s2 + (a.unit || 0) * (a.count || 0) * (a.months || 0), 0);
     expRows.push(['', '400 수익자부담금', '', '', calc.parentFeeExpense(), '', '', '', '', '']);
-    expRows.push(['', '', '410 수익자부담', '411 기타필요경비', calc.parentFeeExpense(), '', '', '', '', '']);
-    state.data.parentFeeExpenses.forEach(a => {
-      expRows.push(['', '', '', '', '', a.name, a.unit || 0, a.count || 0, a.months || 0, (a.unit || 0) * (a.count || 0) * (a.months || 0)]);
-    });
+    if (합(특별) > 0) {
+      expRows.push(['', '', '410 특별활동비', '411 특별활동비', 합(특별), '', '', '', '', '']);
+      특별.forEach(a => {
+        expRows.push(['', '', '', '', '', a.name, a.unit || 0, a.count || 0, a.months || 0, (a.unit || 0) * (a.count || 0) * (a.months || 0)]);
+      });
+    }
+    if (합(기타) > 0) {
+      expRows.push(['', '', '420 기타필요경비', '421 기타필요경비', 합(기타), '', '', '', '', '']);
+      기타.forEach(a => {
+        expRows.push(['', '', '', '', '', a.name, a.unit || 0, a.count || 0, a.months || 0, (a.unit || 0) * (a.count || 0) * (a.months || 0)]);
+      });
+    }
   }
   
   // 재산조성비 (700)
@@ -4706,9 +4785,11 @@ function downloadExcel() {
   //   원장님 서식의 예비비 칸은 **목 코드 1011** 이라 관·항·목을 모두 적어야
   //   금액과 산출기초가 한글 예산서에 채워진다 (2026-09-10 교훈).
   if (state.data.reserveFund > 0) {
-    // 예비비는 단가 × 인원 × 개월로 나눠 쓰는 항목이 아니라서
-    // 단가·인원·개월은 비우고 합계만 적는다 ("예비비 = 1,234천원" 으로 나온다)
-    expRows.push(['', '1000 예비비', '1010 예비비', '1011 예비비', state.data.reserveFund, '예비비', '', '', '', state.data.reserveFund]);
+    // 예비비도 산출내역이 있어야 심사에서 지적을 안 받는다.
+    // 사람 수·개월로 나누는 돈이 아니므로 **한 번에 쓰는 돈(1회)** 으로 적는다.
+    //   → 한글 예산서 산출기초: "예비비 2,777,149원 × 1회 = 2,777천원"
+    // 인원 칸에 숫자 1이 아니라 '1회' 라고 적어야 '1명'으로 나오지 않는다.
+    expRows.push(['', '1000 예비비', '1010 예비비', '1011 예비비', state.data.reserveFund, '예비비', state.data.reserveFund, '1회', '', state.data.reserveFund]);
   }
   
   expRows.push([]);
