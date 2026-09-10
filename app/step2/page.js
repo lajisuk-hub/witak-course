@@ -14,6 +14,8 @@ export default function Step2() {
   const [result, setResult] = useState(null);
   const frameRef = useRef(null);
   const excelRef = useRef(null);
+  // 예산서 화면을 창 전체로 키워 보는 중인지 (2026-09-10 원장님 요청)
+  const [big, setBig] = useState(false);
 
   useEffect(() => {
     if (!authed || !me) return;
@@ -57,6 +59,21 @@ export default function Step2() {
     };
   }, [result?.url]);
 
+  // 화면 가득 보기: 뒤쪽 페이지는 안 움직이게 잠그고, Esc 로도 빠져나오게
+  useEffect(() => {
+    if (!big) return;
+    const before = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === 'Escape') setBig(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = before;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [big]);
+
   if (!authed || !me || !ready) return null;
 
   return (
@@ -67,7 +84,7 @@ export default function Step2() {
         <a href="/">← 차시 목록으로</a>
       </div>
 
-      <div className="wrap" style={{ maxWidth: 1100 }}>
+      <div className="wrap" style={{ maxWidth: 1400 }}>
         {error && <div className="err">{error}</div>}
 
         <div className="card welcome">
@@ -87,12 +104,26 @@ export default function Step2() {
           </div>
         </div>
 
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="budget-size-bar noprint">
+          <button className="btn btn-ghost btn-sm" onClick={() => setBig(true)}>
+            ⤢ 예산서 화면 가득 보기
+          </button>
+        </div>
+
+        {/* 아래 두 자식(단추·iframe)의 순서를 절대 바꾸지 말 것 —
+            순서가 바뀌면 리액트가 iframe 을 새로 만들어 작성 중이던 화면이 처음으로 돌아간다 */}
+        <div className={`card budget-frame${big ? ' big' : ''}`}>
+          <button
+            className="budget-close noprint"
+            hidden={!big}
+            onClick={() => setBig(false)}
+          >
+            ✕ 원래 크기로 (Esc)
+          </button>
           <iframe
             ref={frameRef}
             src={`/budget/index.html?phone=${encodeURIComponent(me.phone)}`}
             title="예산서 만들기"
-            style={{ width: '100%', height: '78vh', border: 'none', display: 'block' }}
           />
         </div>
 

@@ -49,7 +49,8 @@ body::before {
 }
 
 #app {
-  max-width: 960px;
+  /* 2차시 안에서 좁게 갇혀 답답하다는 원장님 말씀(2026-09-10)에 맞춰 넓힘 */
+  max-width: 1180px;
   margin: 0 auto;
   padding: 0 20px;
   padding-bottom: 100px;
@@ -396,7 +397,7 @@ body::before {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  max-width: 960px;
+  max-width: 1180px;   /* #app 과 같은 폭 */
   margin: 0 auto;
 }
 
