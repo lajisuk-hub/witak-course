@@ -632,3 +632,17 @@ ol.steps-list li::before {
 }
 .budget-close:hover { background: #fff; }
 .budget-size-bar { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+
+/* 7차시 · 점검 결과만 인쇄 (body에 print-review가 붙어 있을 때) */
+@media print {
+  body.print-review .head,
+  body.print-review .card:not(.review-card),
+  body.print-review .review-card > h2,
+  body.print-review .review-card > p,
+  body.print-review .review-card > ul,
+  body.print-review .review-card > .row,
+  body.print-review .review-card > .info,
+  body.print-review .review-card > .warn { display: none !important; }
+  body.print-review .review-card { border: 0; background: #fff; padding: 0; }
+  body.print-review #review-result { margin-top: 0 !important; }
+}
