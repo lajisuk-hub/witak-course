@@ -144,12 +144,17 @@ export default function Step9() {
         }).then(async (r) => {
           const j = await r.json();
           if (!r.ok) throw new Error(j.error || '발표자료를 만들지 못했습니다.');
-          return j.slides;
+          return j;
         });
 
-      const [a, b] = await Promise.all([call(1), call(2)]);
-      const all = [...a, ...b].sort((x, y) => x.no - y.no);
-      if (all.length < PRESENT_SECTIONS.length) {
+      const [ra, rb] = await Promise.all([call(1), call(2)]);
+      const all = [...ra.slides, ...rb.slides].sort((x, y) => x.no - y.no);
+      if (ra.truncated || rb.truncated) {
+        setNote({
+          type: 'warn',
+          text: '서류가 너무 길어 앞 15만 자까지만 읽었습니다. 뒤쪽 내용이 빠졌으면 그 부분만 아래 칸에 붙여넣어 다시 만들어 주세요.',
+        });
+      } else if (all.length < PRESENT_SECTIONS.length) {
         setNote({
           type: 'warn',
           text: `${PRESENT_SECTIONS.length}꼭지 중 ${all.length}꼭지만 만들어졌습니다. 다시 한 번 눌러 주세요.`,

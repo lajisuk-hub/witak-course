@@ -9,12 +9,14 @@ import { PART1, PART2, scriptCharRange, scriptSentences } from '@/lib/presentPla
 
 export const maxDuration = 60;
 const MODEL = 'claude-sonnet-5';
-const SRC_LIMIT = 30000; // 서류가 아주 길면 앞부분만 본다
+// 서류 전문을 다 읽는다. 완성된 위탁 서류는 70쪽·8만 자가 넘는 것이 보통이라
+// 앞부분만 보면 뒤쪽(특색프로그램·취약보육)을 못 찾는다 (2026-09-23 교훈, 예전 한도 3만 자).
+const SRC_LIMIT = 150000;
 
 function sourceBlock(sourceText) {
   const s = String(sourceText || '').trim();
   if (s.length < 30) return null;
-  return s.slice(0, SRC_LIMIT);
+  return { text: s.slice(0, SRC_LIMIT), truncated: s.length > SRC_LIMIT };
 }
 
 function buildPrompt({ sections, source, center, applicant, city }) {
@@ -127,7 +129,7 @@ export async function POST(req) {
     const sections = Number(body.part) === 2 ? PART2 : PART1;
     const prompt = buildPrompt({
       sections,
-      source,
+      source: source.text,
       center: body.center,
       applicant: body.applicant,
       city: body.city,
@@ -149,7 +151,7 @@ export async function POST(req) {
         { status: 502 }
       );
     }
-    return Response.json({ slides });
+    return Response.json({ slides, truncated: source.truncated });
   } catch (err) {
     return Response.json({ error: err.message || '알 수 없는 오류' }, { status: 500 });
   }
