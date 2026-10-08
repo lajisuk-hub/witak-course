@@ -44,7 +44,8 @@ export async function POST(req) {
 
 규칙:
 1. 공고문에 적힌 순서와 이름을 그대로 살린다. 번호(①②, 1.2. 등)는 떼고 이름만 남긴다.
-2. 큰 항목 아래 작은 항목이 있으면 작은 항목까지 각각 하나씩 넣는다.
+2. 큰 항목 아래 작은 항목(1. 2. / 가. 나. / ①② 등)이 있으면 따로 항목으로 빼지 말고
+   그 큰 항목의 subs 배열에 순서대로 넣는다(번호는 떼고 이름만). 작은 항목이 없으면 subs 는 빈 배열.
 3. 서류 목록이 아닌 문장(일정, 문의처, 심사방법 등)은 넣지 않는다.
 4. 각 항목마다, 아래 "샘플 꼭지 목록"에서 가장 잘 맞는 것 하나의 id를 matchId 에 넣는다.
    확실히 맞는 것이 없으면 matchId 는 null 로 둔다. 억지로 맞추지 마라.
@@ -60,7 +61,7 @@ export async function POST(req) {
 ${list}
 
 반드시 아래 형식의 JSON만 출력하라. 설명 문장은 쓰지 마라.
-{"cityName":"○○시","setting":{"font":"","size":0,"lineSpacing":0,"margin":0},"items":[{"name":"항목 이름","matchId":"샘플id 또는 null"}]}`;
+{"cityName":"○○시","setting":{"font":"","size":0,"lineSpacing":0,"margin":0},"items":[{"name":"항목 이름","matchId":"샘플id 또는 null","subs":["작은 항목 이름"]}]}`;
 
     const content = [];
     if (kind === 'pdf' && base64) {
@@ -120,6 +121,9 @@ ${list}
         .map((it) => ({
           name: String(it.name).trim(),
           matchId: it.matchId && it.matchId !== 'null' ? String(it.matchId) : null,
+          subs: (Array.isArray(it.subs) ? it.subs : [])
+            .map((x) => String(x || '').trim())
+            .filter(Boolean),
         })),
     });
   } catch (e) {

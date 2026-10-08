@@ -108,6 +108,12 @@ export default function Home() {
   const relink = (i, matchId) =>
     setItems(items.map((it, k) => (k === i ? { ...it, matchId: matchId || null } : it)));
   const add = () => setItems([...items, { name: '새 항목', matchId: null }]);
+  // 하위 항목 (예: 어린이집 운영계획 → 1. 기본방향, 2. 조직 및 인력관리 …)
+  const subsOf = (it) => (Array.isArray(it.subs) ? it.subs : []);
+  const setSubs = (i, subs) => setItems(items.map((it, k) => (k === i ? { ...it, subs } : it)));
+  const addSub = (i) => setSubs(i, [...subsOf(items[i]), '']);
+  const renameSub = (i, j, v) => setSubs(i, subsOf(items[i]).map((x, k) => (k === j ? v : x)));
+  const removeSub = (i, j) => setSubs(i, subsOf(items[i]).filter((_, k) => k !== j));
 
   const usedIds = new Set(items.map((it) => it.matchId).filter(Boolean));
   const unused = sections.filter((s) => !usedIds.has(s.id));
@@ -307,6 +313,35 @@ export default function Home() {
                     삭제
                   </button>
                 </div>
+                <div style={{ marginTop: 8, paddingLeft: 34 }}>
+                  {subsOf(it).map((sub, j) => (
+                    <div
+                      className="row"
+                      key={j}
+                      style={{ flexWrap: 'nowrap', alignItems: 'center', marginTop: 6 }}
+                    >
+                      <span style={{ fontSize: 13, color: 'var(--muted)', minWidth: 22 }}>
+                        {j + 1}.
+                      </span>
+                      <input
+                        type="text"
+                        value={sub}
+                        onChange={(e) => renameSub(i, j, e.target.value)}
+                        placeholder="하위 항목 이름"
+                      />
+                      <button className="btn btn-ghost btn-sm" onClick={() => removeSub(i, j)}>
+                        빼기
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    style={{ marginTop: 6 }}
+                    onClick={() => addSub(i)}
+                  >
+                    + 하위 항목 추가
+                  </button>
+                </div>
               </div>
             ))}
 
@@ -438,6 +473,17 @@ export default function Home() {
                     <span className="no">{i + 1}</span>
                     <span className="name">{it.name}</span>
                   </div>
+                  {subsOf(it).filter((x) => x.trim()).length > 0 && (
+                    <div style={{ paddingLeft: 38, marginTop: 6, fontSize: 14, color: 'var(--muted)' }}>
+                      {subsOf(it)
+                        .filter((x) => x.trim())
+                        .map((x, j) => (
+                          <div key={j}>
+                            {j + 1}. {x}
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

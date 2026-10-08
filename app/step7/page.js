@@ -216,7 +216,13 @@ export default function Step7() {
         .filter(Boolean);
       const base = {
         sourceText: srcText,
-        toc: Array.isArray(d.items) ? d.items.map((it) => it.name) : [],
+        toc: Array.isArray(d.items)
+          ? d.items.map((it) =>
+              Array.isArray(it.subs) && it.subs.length
+                ? `${it.name} (${it.subs.filter(Boolean).join(', ')})`
+                : it.name
+            )
+          : [],
         interview: interviewText(d, vulnAreas),
         center: d.center || center,
         applicant: d.applicant || applicant,
